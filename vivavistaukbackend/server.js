@@ -134,11 +134,11 @@ if (isLocal) {
     ),
   };
 
-  https.createServer(sslOptions, app).listen(PORT, "0.0.0.0", () => {
-    console.log(
-      `🚀 Secure Server running on https://api.vivavistavacations.co.uk:${PORT}`
-    );
-  });
+  // https.createServer(sslOptions, app).listen(PORT, "0.0.0.0", () => {
+  //   console.log(
+  //     `🚀 Secure Server running on https://api.vivavistavacations.co.uk:${PORT}`
+  //   );
+  // });
   app.listen(PORT, "0.0.0.0", () =>
     console.log(`🚀 Server running on http://localhost:${PORT}`)
   );
