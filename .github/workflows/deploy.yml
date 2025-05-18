@@ -33,7 +33,7 @@ jobs:
 
             # Backend
             cd vivavistaukbackend
-            npm install
+            npm install 
             pm2 stop vivavista-backend-uk || true
             pm2 start server.js --name vivavista-backend-uk
             pm2 save

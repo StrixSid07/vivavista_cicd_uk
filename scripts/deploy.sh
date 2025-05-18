@@ -35,7 +35,7 @@ pm2 startup
 ############### ADMIN PANEL ##################
 echo "🛠️ Building admin panel (vivavistaadminuk)..."
 cd ../vivavistaadminuk
-npm install
+npm install --force
 npm run build
 
 echo "📤 Deploying admin panel to /var/www/vivavistaadminuk..."
@@ -45,7 +45,7 @@ cp -r dist/* /var/www/vivavistaadminuk/
 ############### MAIN WEBSITE ##################
 echo "🌐 Building main website (vivavistauk)..."
 cd ../vivavistauk
-npm install
+npm install --force
 npm run build
 
 echo "📤 Deploying main website to /var/www/vivavistauk..."
