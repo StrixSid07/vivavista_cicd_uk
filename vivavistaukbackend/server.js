@@ -7,15 +7,15 @@ const session = require("express-session");
 const connectDB = require("./config/db");
 const rateLimit = require("express-rate-limit");
 const compression = require("compression");
-// const redis = require("redis");
+const redis = require("redis");
 const fs = require("fs");
 const https = require("https");
 const swaggerDocs = require("./config/swagger");
 const path = require("path"); // ✅ Import path module
 
 // Initialize Redis client
-// const client = redis.createClient();
-// client.connect();
+const client = redis.createClient();
+client.connect();
 
 dotenv.config();
 connectDB();
@@ -44,8 +44,8 @@ const corsOptions = {
 };
 
 const app = express();
-app.use(cors());
-// app.options("*", cors(corsOptions));
+// app.use(cors());
+app.options("*", cors(corsOptions));
 app.use(express.json());
 app.use(helmet());
 app.use(morgan("dev"));
@@ -99,15 +99,15 @@ app.use("/api/mail", require("./routes/contactRoutes"));
 app.use("/api/newslatter", require("./routes/newslatterXLRoutes"));
 app.use("/api/admindealsexternal", require("./routes/adminDeals"));
 // ✅ Apply Caching to Deals API
-// const cacheMiddleware = async (req, res, next) => {
-//   const key = req.originalUrl;
-//   const cachedData = await client.get(key);
-//   if (cachedData) {
-//     return res.json(JSON.parse(cachedData)); // Return cached response
-//   }
-//   next();
-// };
-// app.use("/api/deals", cacheMiddleware);
+const cacheMiddleware = async (req, res, next) => {
+  const key = req.originalUrl;
+  const cachedData = await client.get(key);
+  if (cachedData) {
+    return res.json(JSON.parse(cachedData)); // Return cached response
+  }
+  next();
+};
+app.use("/api/deals", cacheMiddleware);
 
 // ✅ Initialize Swagger Docs
 swaggerDocs(app);
@@ -125,25 +125,25 @@ if (isLocal) {
   );
 } else {
   // 🔹 Production Server (HTTPS)
-  // const sslOptions = {
-  //   key: fs.readFileSync(
-  //     "/etc/letsencrypt/live/vivavistavacations.co.uk/privkey.pem"
-  //   ),
-  //   cert: fs.readFileSync(
-  //     "/etc/letsencrypt/live/vivavistavacations.co.uk/fullchain.pem"
-  //   ),
-  // };
+  const sslOptions = {
+    key: fs.readFileSync(
+      "/etc/letsencrypt/live/vivavistavacations.co.uk/privkey.pem"
+    ),
+    cert: fs.readFileSync(
+      "/etc/letsencrypt/live/vivavistavacations.co.uk/fullchain.pem"
+    ),
+  };
 
-  // https.createServer(sslOptions, app).listen(PORT, "0.0.0.0", () => {
-  //   console.log(
-  //     `🚀 Secure Server running on https://api.vivavistavacations.co.uk:${PORT}`
-  //   );
-  // });
-  app.listen(PORT, "0.0.0.0", () =>
-    console.log(`🚀 Server running on http://localhost:${PORT}`)
-  );
+  https.createServer(sslOptions, app).listen(PORT, "0.0.0.0", () => {
+    console.log(
+      `🚀 Secure Server running on https://api.vivavistavacations.co.uk:${PORT}`
+    );
+  });
+  // app.listen(PORT, "0.0.0.0", () =>
+  //   console.log(`🚀 Server running on http://localhost:${PORT}`)
+  // );
 }
 
 // ✅ Start Cron Job for Hotel Ratings Update
-// const updateHotelRatings = require("./cron/hotelUpdater");
-// updateHotelRatings();
+const updateHotelRatings = require("./cron/hotelUpdater");
+updateHotelRatings();
