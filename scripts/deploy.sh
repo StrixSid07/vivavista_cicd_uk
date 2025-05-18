@@ -19,7 +19,8 @@ fi
 
 echo "📦 Pulling latest changes..."
 cd vivavista_cicd_uk
-git pull origin main
+git fetch origin
+git reset --hard origin/main
 
 ############### BACKEND SETUP ##################
 echo "🚀 Setting up backend (vivavistaukbackend)..."

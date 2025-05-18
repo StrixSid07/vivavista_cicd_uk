@@ -29,7 +29,9 @@ jobs:
               git clone https://github.com/StrixSid07/vivavista_cicd_uk.git
             fi
             cd vivavista_cicd_uk
-            git pull origin main
+            git fetch origin
+            git reset --hard origin/main
+
 
             # Backend
             cd vivavistaukbackend
