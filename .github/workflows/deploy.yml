@@ -41,14 +41,14 @@ jobs:
 
             # Admin Panel
             cd ../vivavistaukadmin
-            npm install --force
+            npm install
             npm run build
             rm -rf /var/www/vivavistaadminuk/*
             cp -r dist/* /var/www/vivavistaadminuk/
 
             # Main Website
             cd ../vivavistauk
-            npm install --force
+            npm install
             npm run build
             rm -rf /var/www/vivavistauk/*
             cp -r dist/* /var/www/vivavistauk/
