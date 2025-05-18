@@ -34,7 +34,7 @@ pm2 startup
 
 ############### ADMIN PANEL ##################
 echo "🛠️ Building admin panel (vivavistaadminuk)..."
-cd ../vivavistaadminuk
+cd ../vivavistaukadmin
 npm install --force
 npm run build
 

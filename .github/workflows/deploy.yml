@@ -40,7 +40,7 @@ jobs:
             pm2 startup
 
             # Admin Panel
-            cd ../vivavistaadminuk
+            cd ../vivavistaukadmin
             npm install --force
             npm run build
             rm -rf /var/www/vivavistaadminuk/*
