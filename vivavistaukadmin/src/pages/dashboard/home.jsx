@@ -75,7 +75,7 @@ export function Home() {
           >
             <div>
               <Typography variant="h6" color="blue-gray" className="mb-1">
-                Projects all
+                Projects
               </Typography>
               <Typography
                 variant="small"
