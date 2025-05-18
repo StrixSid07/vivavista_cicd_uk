@@ -34,22 +34,22 @@ jobs:
             # Backend
             cd vivavistaukbackend
             npm install
-            pm2 stop vivavista-backend || true
-            pm2 start server.js --name vivavista-backend
+            pm2 stop vivavista-backend-uk || true
+            pm2 start server.js --name vivavista-backend-uk
             pm2 save
             pm2 startup
 
             # Admin Panel
             cd ../vivavistaadminuk
-            npm install
+            npm install --force
             npm run build
-            rm -rf /var/www/vivavistaadminuk
-            cp -r dist /var/www/vivavistaadminuk
+            rm -rf /var/www/vivavistaadminuk/*
+            cp -r dist/* /var/www/vivavistaadminuk/
 
             # Main Website
             cd ../vivavistauk
-            npm install
+            npm install --force
             npm run build
-            rm -rf /var/www/vivavistauk
-            cp -r dist /var/www/vivavistauk
+            rm -rf /var/www/vivavistauk/*
+            cp -r dist/* /var/www/vivavistauk/
           EOF

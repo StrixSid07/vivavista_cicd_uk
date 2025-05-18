@@ -27,8 +27,8 @@ cd vivavistaukbackend
 npm install
 
 echo "🔁 Restarting backend with PM2..."
-pm2 stop vivavista-backend || true
-pm2 start server.js --name vivavista-backend
+pm2 stop vivavista-backend-uk || true
+pm2 start server.js --name vivavista-backend-uk
 pm2 save
 pm2 startup
 
