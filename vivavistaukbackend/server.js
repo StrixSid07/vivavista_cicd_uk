@@ -139,9 +139,9 @@ if (isLocal) {
       `🚀 Secure Server running on https://api.vivavistavacations.co.uk:${PORT}`
     );
   });
-  // app.listen(PORT, "0.0.0.0", () =>
-  //   console.log(`🚀 Server running on http://localhost:${PORT}`)
-  // );
+  app.listen(PORT, "0.0.0.0", () =>
+    console.log(`🚀 Server running on http://localhost:${PORT}`)
+  );
 }
 
 // ✅ Start Cron Job for Hotel Ratings Update
