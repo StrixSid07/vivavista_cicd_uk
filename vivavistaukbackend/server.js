@@ -125,14 +125,14 @@ if (isLocal) {
   );
 } else {
   // 🔹 Production Server (HTTPS)
-  const sslOptions = {
-    key: fs.readFileSync(
-      "/etc/letsencrypt/live/vivavistavacations.co.uk/privkey.pem"
-    ),
-    cert: fs.readFileSync(
-      "/etc/letsencrypt/live/vivavistavacations.co.uk/fullchain.pem"
-    ),
-  };
+  // const sslOptions = {
+  //   key: fs.readFileSync(
+  //     "/etc/letsencrypt/live/vivavistavacations.co.uk/privkey.pem"
+  //   ),
+  //   cert: fs.readFileSync(
+  //     "/etc/letsencrypt/live/vivavistavacations.co.uk/fullchain.pem"
+  //   ),
+  // };
 
   // https.createServer(sslOptions, app).listen(PORT, "0.0.0.0", () => {
   //   console.log(

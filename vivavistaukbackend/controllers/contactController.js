@@ -4,7 +4,7 @@ const nodemailer = require("nodemailer");
 const path = require("path");
 const logoPath = path.join(__dirname, "..", "assets", "vivavista.png");
 
-// Create transporter object for sending emails
+// Create transporter object for sending emails via gmail
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -12,6 +12,20 @@ const transporter = nodemailer.createTransport({
     pass: "goeb zety hbwg svcy", // Your Gmail password or app-specific password if 2-factor authentication is enabled
   },
 });
+
+// Create transporter object for sending emails via Microsoft 365
+// const transporter = nodemailer.createTransport({
+//   host: "smtp.office365.com",
+//   port: 587,
+//   secure: false, // Use TLS
+//   auth: {
+//     user: "admin@vivavistavacations.co.uk",
+//     pass: "xwhwfkvwlxgnrxgh", // App password
+//   },
+//   tls: {
+//     ciphers: "SSLv3",
+//   },
+// });
 
 const supportPhone = "+0203 780 5023";
 const supportEmail = "admin@vivavistavactions.co.uk";
