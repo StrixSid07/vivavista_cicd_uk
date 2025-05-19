@@ -403,7 +403,7 @@ const Navbar = () => {
       ) : (
         // Desktop version: dropdown opens on hover
         <nav className={`${navbarStyles.backgroundColor} shadow-md`}>
-          <div className="container mx-auto font-bold flex justify-between items-center p-1">
+          <div className="container mx-auto font-bold flex justify-between items-center p-2">
             <div className="flex justify-between items-center gap-10">
               <Link to="/">
                 <img
@@ -421,13 +421,13 @@ const Navbar = () => {
                         onMouseEnter={() => handleMouseEnter(index)}
                         onMouseLeave={(e) => handleMouseLeave(index, e)}
                       >
-                        <img
+                        {/* <img
                           src={item.icon}
                           alt=""
                           className="h-10 w-10 object-cover mt-2 mr-4"
-                        />
+                        /> */}
                         <button
-                          className={`flex justify-between items-center gap-2 px-4 rounded-full bg-transparent transition-all duration-700 ease-in-out
+                          className={`flex justify-between items-center mt-2 gap-2 px-4 rounded-full bg-transparent transition-all duration-700 ease-in-out
                           ${item.name === "Hot Bargains" ? "animate-blink" : ""}
                           ${
                             dropdownStates[index]
@@ -481,11 +481,11 @@ const Navbar = () => {
                           }`}
                         onClick={closeAllDropdowns}
                       >
-                        <img
+                        {/* <img
                           src={item.icon}
                           alt=""
                           className="h-10 w-10 object-cover"
-                        />
+                        /> */}
                         {item.name}
                       </Link>
                     )}
