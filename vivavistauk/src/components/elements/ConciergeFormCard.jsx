@@ -106,6 +106,19 @@ const ConciergeFormCard = ({
         }
       }
 
+      await axios.post(`${Base_Url}/mail/notify-admin`, {
+        name: formData.name,
+        email: formData.email,
+        phone: `${formData.countryCallingCode}${formData.phone}`,
+        message: formData.message,
+        dealId,
+        dealTitle: dealtitleform,
+        pax: adultCount,
+        airport,
+        selectedDate,
+        totalPrice,
+      });
+
       setAlert({
         open: true,
         message: "Booking created successfully!",

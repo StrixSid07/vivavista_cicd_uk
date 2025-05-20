@@ -5,33 +5,33 @@ const path = require("path");
 const logoPath = path.join(__dirname, "..", "assets", "vivavista.png");
 
 // Create transporter object for sending emails via gmail
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: "vivavistavacations@gmail.com", // Your Gmail email address
-    pass: "goeb zety hbwg svcy", // Your Gmail password or app-specific password if 2-factor authentication is enabled
-  },
-});
-
-// Create transporter object for sending emails via Microsoft 365
 // const transporter = nodemailer.createTransport({
-//   host: "smtp.office365.com",
-//   port: 587,
-//   secure: false, // Use TLS
+//   service: "gmail",
 //   auth: {
-//     user: "admin@vivavistavacations.co.uk",
-//     pass: "xwhwfkvwlxgnrxgh", // App password
-//   },
-//   tls: {
-//     ciphers: "SSLv3",
+//     user: "vivavistavacations@gmail.com", // Your Gmail email address
+//     pass: "goeb zety hbwg svcy", // Your Gmail password or app-specific password if 2-factor authentication is enabled
 //   },
 // });
 
+// Create transporter object for sending emails via Microsoft 365
+const transporter = nodemailer.createTransport({
+  host: "smtp.office365.com",
+  port: 587,
+  secure: false, // Use TLS
+  auth: {
+    user: "admin@vivavistavacations.co.uk",
+    pass: "rbsyybdjnlqczmyy", // App password
+  },
+  tls: {
+    ciphers: "SSLv3",
+  },
+});
+
 const supportPhone = "+0203 780 5023";
-const supportEmail = "admin@vivavistavactions.co.uk";
+const supportEmail = "admin@vivavistavacations.co.uk";
 
 const adminEmails = [
-  "admin@vivavistavactions.co.uk",
+  "admin@vivavistavacations.co.uk",
   "mickey@vivavistavacations.co.uk",
   "vivavistavacations@gmail.com",
 ];
@@ -316,7 +316,7 @@ style="max-width:150px; height:auto; display:block;"
   }
 };
 
-//Controller method to dend booking info to client
+//Controller method to send booking info to client
 exports.sendBookingConfirmation = async (req, res) => {
   try {
     const {
@@ -330,7 +330,7 @@ exports.sendBookingConfirmation = async (req, res) => {
       days,
     } = req.body;
 
-    const supportEmail = "support@vivavista.com"; // replace with actual
+    const supportEmail = "admin@vivavistavacations.co.uk"; // replace with actual
     const supportPhone = "+44 1234 567890"; // replace with actual
 
     await transporter.sendMail({
@@ -388,5 +388,57 @@ style="max-width: 150px; height: auto;"
   } catch (error) {
     console.error("Error sending booking confirmation:", error);
     res.status(500).json({ message: "Failed to send confirmation email." });
+  }
+};
+
+//Controller method to notify about booking info to admin
+exports.notifyAdminOfNewBooking = async (req, res) => {
+  try {
+    const {
+      name,
+      email,
+      phone,
+      message,
+      dealId,
+      dealTitle,
+      pax,
+      airport,
+      selectedDate,
+      totalPrice,
+    } = req.body;
+
+    await transporter.sendMail({
+      from: `"Viva Vista Website" <${supportEmail}>`,
+      to: adminEmails, // should be an array or comma-separated string
+      subject: `📢 New Booking Received – Deal ID: ${dealId}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+          <h2 style="color: #2c3e50;">📢 New Booking Alert</h2>
+          <p><strong>A new booking has been submitted via the Viva Vista Vacations website.</strong></p>
+          <hr style="border: none; border-top: 1px solid #ccc;" />
+
+          <p><strong>🧍 Name:</strong> ${name}</p>
+          <p><strong>📧 Email:</strong> ${email}</p>
+          <p><strong>📱 Phone:</strong> ${phone}</p>
+          <p><strong>📝 Message:</strong> ${message || 'N/A'}</p>
+
+          <p><strong>🎯 Deal:</strong> ${dealTitle} (ID: ${dealId})</p>
+          <p><strong>🛫 Departure Airport:</strong> ${airport || 'N/A'}</p>
+          <p><strong>📅 Selected Date:</strong> ${selectedDate || 'N/A'}</p>
+          <p><strong>👥 Adults:</strong> ${pax}</p>
+          <p><strong>💰 Total Price:</strong> £${totalPrice}</p>
+
+          <hr style="border: none; border-top: 1px solid #ccc;" />
+          <p style="color: #888; font-size: 0.9em;">This notification was generated automatically.</p>
+        </div>
+      `,
+    });
+
+    return res.status(200).json({ message: "Admin notified successfully." });
+  } catch (error) {
+    console.error("Error notifying admin of new booking:", error);
+    return res.status(500).json({
+      message: "Failed to notify admin. Please try again later.",
+    });
   }
 };
