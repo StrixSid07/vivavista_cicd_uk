@@ -162,7 +162,7 @@ exports.sendGroupBookingInquiry = async (req, res) => {
 
     // Send to Admin
     await transporter.sendMail({
-      from: `"${name}" <${email}>`,
+      from: `"${name}"`,
       to: adminEmails,
       subject: "👥 New Group Booking Inquiry – Viva Vista Website",
       html: `
