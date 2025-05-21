@@ -1,6 +1,6 @@
 const Booking = require("../models/Booking");
 const Deal = require("../models/Deal");
-
+const Airport = require("../models/Airport");
 // ✅ Create a Booking (User or Guest)
 // const createBooking = async (req, res) => {
 //   try {
@@ -97,7 +97,7 @@ const createBooking = async (req, res) => {
       adults,
       children = 0,
     } = req.body;
-
+    console.log("this is data resived fromm backend", req.body);
     // Format date from "DD/MM/YYYY" to "YYYY-MM-DD"
     const [day, month, year] = selectedDate.split("/");
     const formattedDate = `${year}-${month}-${day}`;
@@ -108,19 +108,21 @@ const createBooking = async (req, res) => {
     }
 
     const selectedDateOnly = selectedDateObj.toISOString().split("T")[0];
-    const airportCode = airport.toUpperCase();
+const airportr = await Airport.findById(airport);
+    const airportCode = airportr.code;
 
     // Find deal and populate 'prices.hotel'
     const deal = await Deal.findById(dealId).populate("prices.hotel").populate("prices.airport");
     if (!deal) {
       return res.status(404).json({ message: "Deal not found" });
     }
-
+    // console.log("this is selcted date", selectedDateOnly);
+    // console.log("this is airport:", airportCode);
     // Match correct pricing object
     const matchedPrice = deal.prices.find((price) => {
       const start = new Date(price.startdate).toISOString().split("T")[0];
       const end = new Date(price.enddate).toISOString().split("T")[0];
-      console.log("this is price ",price);
+      // console.log("this is price ",price);
       const hasMatchingAirport = Array.isArray(price.airport)
   ? price.airport.some((a) => a.code?.toUpperCase() === airportCode)
   : price.airport?.code?.toUpperCase() === airportCode;
@@ -131,7 +133,7 @@ return (
   selectedDateOnly <= end
 );
     });
-
+    // console.log("matchprices", matchedPrice);
     if (!matchedPrice) {
       return res.status(404).json({
         message: "No pricing available for the selected date and airport",

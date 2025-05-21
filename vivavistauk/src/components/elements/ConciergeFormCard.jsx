@@ -106,7 +106,7 @@ const ConciergeFormCard = ({
         }
       }
 
-      await axios.post(`${Base_Url}/mail/notify-admin`, {
+      await axios.post(`${Base_Url}/mail/notify-admin-booking`, {
         name: formData.name,
         email: formData.email,
         phone: `${formData.countryCallingCode}${formData.phone}`,
