@@ -173,11 +173,23 @@ export function ManageCarousel() {
         </DialogHeader>
         <DialogBody>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/*              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) =>
+                  setFormData({
+                    images: Array.from(e.target.files).slice(0, 1),
+                  })
+                }
+                required
+              />
+  */}
             <input
               type="file"
               accept="image/*"
-              onChange={(e) =>
-                setFormData({ images: Array.from(e.target.files).slice(0, 1) })
+              multiple={false}
+              onChange={
+                (e) => setFormData({ images: [e.target.files[0]] }) // store single image in array
               }
               required
             />
