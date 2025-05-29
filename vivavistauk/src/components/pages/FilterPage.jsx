@@ -101,7 +101,7 @@ const FilterPage = () => {
             price: price.price,
             priceswitch: price.priceswitch,
             flightDetails: price.flightDetails,
-            _id:price._id
+            _id: price._id
           }))
         );
 
@@ -193,16 +193,16 @@ const FilterPage = () => {
   const priceMap = prices.reduce((acc, p) => {
     const date = new Date(p.startdate).toLocaleDateString("en-GB"); // e.g., 07/05/2025
     const key = `${date}_${p._id}`; // Combine date and unique ID
-  
+
     acc[key] = {
       value: p.price,
       priceswitch: p.priceswitch ?? false,
       pricesid: p._id,
     };
-  
+
     return acc;
   }, {});
-  
+
   if (loading)
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -223,7 +223,7 @@ const FilterPage = () => {
           >
             {/* Top Deal Badge */}
             {tripData.isTopDeal && (
-              <div className="absolute top-0 right-0 m-2 bg-yellow-400 text-sm font-semibold text-black px-3 py-1 rounded-tr-xl rounded-bl-xl flex items-center gap-1 shadow">
+              <div className="absolute top-0 right-0 -mt-4 -mr-4 md:mt-0 md:mr-0 bg-yellow-400 text-sm font-semibold text-black px-3 py-1 rounded-tr-xl rounded-bl-xl flex items-center gap-1 shadow">
                 <Sparkles className="w-4 h-4" />
                 Top Deal
               </div>
@@ -357,7 +357,7 @@ const FilterPage = () => {
               departureDates={prices.map((p) =>
                 new Date(p.startdate).toLocaleDateString("en-GB")
               )}
-              pricesid={prices.map((p) =>p._id)}
+              pricesid={prices.map((p) => p._id)}
               departureAirports={prices.map((p) => p.airport)}
               priceMap={priceMap}
             />
