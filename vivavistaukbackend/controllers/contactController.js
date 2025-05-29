@@ -43,7 +43,7 @@ exports.sendContactMessage = async (req, res) => {
 
     // 1. Send to admin
     await transporter.sendMail({
-      from: `"${name}" <${email}>`,
+      from: `"${name}"`,
       to: adminEmails,
       subject: "📩 New Inquiry from Contact Us Section – Viva Vista Website",
       html: `
@@ -420,11 +420,11 @@ exports.notifyAdminOfNewBooking = async (req, res) => {
           <p><strong>🧍 Name:</strong> ${name}</p>
           <p><strong>📧 Email:</strong> ${email}</p>
           <p><strong>📱 Phone:</strong> ${phone}</p>
-          <p><strong>📝 Message:</strong> ${message || 'N/A'}</p>
+          <p><strong>📝 Message:</strong> ${message || "N/A"}</p>
 
           <p><strong>🎯 Deal:</strong> ${dealTitle} (ID: ${dealId})</p>
-          <p><strong>🛫 Departure Airport:</strong> ${airport || 'N/A'}</p>
-          <p><strong>📅 Selected Date:</strong> ${selectedDate || 'N/A'}</p>
+          <p><strong>🛫 Departure Airport:</strong> ${airport || "N/A"}</p>
+          <p><strong>📅 Selected Date:</strong> ${selectedDate || "N/A"}</p>
           <p><strong>👥 Adults:</strong> ${pax}</p>
           <p><strong>💰 Total Price:</strong> £${totalPrice}</p>
 
