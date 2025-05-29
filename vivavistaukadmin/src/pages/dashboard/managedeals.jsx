@@ -97,6 +97,10 @@ export const ManageDeals = () => {
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [dealName, setDealName] = useState("");
+  const [newImages, setNewImages] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [buttonDisabled, setButtonDisabled] = useState(false);
+  const [deleteInProgress, setDeleteInProgress] = useState(false);
 
   useEffect(() => {
     fetchDeals();
@@ -168,6 +172,11 @@ export const ManageDeals = () => {
   };
 
   const handleOpenDialog = (deal = null) => {
+    if (buttonDisabled) return;
+    
+    setButtonDisabled(true);
+    setTimeout(() => setButtonDisabled(false), 500); // Prevent double-clicks for 500ms
+    
     setCurrentDeal(deal);
     // console.log("thisis images", deal.images);
     setFormData(
@@ -326,6 +335,8 @@ export const ManageDeals = () => {
     setOpenDialog(false);
     setCurrentDeal(null);
     setAlert({ message: "", type: "" });
+    setIsSubmitting(false);
+    setNewImages([]);
   };
 
   const handleOpenViewDialog = (deal) => {
@@ -337,9 +348,13 @@ export const ManageDeals = () => {
     setOpenViewDialog(false);
     setCurrentDeal(null);
   };
-  const [newImages, setNewImages] = useState([]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Prevent duplicate submissions
+    if (isSubmitting) return;
+    
     if (formData.availableCountries.length === 0) {
       setAlert({
         message: "Please select at least one available country.",
@@ -348,7 +363,9 @@ export const ManageDeals = () => {
       return;
     }
 
+    setIsSubmitting(true);
     setLoading(true);
+    
     const formDataToSubmit = new FormData();
     formDataToSubmit.append("data", JSON.stringify(formData));
     if (newImages && newImages.length > 0) {
@@ -382,8 +399,10 @@ export const ManageDeals = () => {
       setAlert({ message: errorMessage, type: "red" });
     } finally {
       setLoading(false);
+      setIsSubmitting(false);
     }
   };
+
   const handleRemoveImage = async (indexToRemove, imageUrl) => {
     try {
       const dealId = formData._id; // adjust this as per your data
@@ -404,13 +423,21 @@ export const ManageDeals = () => {
   };
 
   const confirmDelete = (id, name) => {
+    if (buttonDisabled) return;
+    
+    setButtonDisabled(true);
+    setTimeout(() => setButtonDisabled(false), 500); // Prevent double-clicks for 500ms
+    
     setDeleteId(id);
     setDealName(name);
     setOpenDeleteDialog(true);
   };
 
   const handleDelete = async (id) => {
+    if (deleteInProgress) return;
+    
     try {
+      setDeleteInProgress(true);
       await axios.delete(`/deals/${id}`);
       setAlert({ message: "Deal deleted successfully!", type: "green" });
       fetchDeals();
@@ -420,6 +447,7 @@ export const ManageDeals = () => {
     } finally {
       setOpenDeleteDialog(false);
       setDeleteId(null);
+      setDeleteInProgress(false);
     }
   };
 
@@ -483,7 +511,7 @@ export const ManageDeals = () => {
       )}
 
       <div className="mb-4 flex justify-end">
-        <Button onClick={() => handleOpenDialog()} color="blue">
+        <Button onClick={() => handleOpenDialog()} color="blue" disabled={buttonDisabled}>
           Add Deal
         </Button>
       </div>
@@ -612,6 +640,7 @@ export const ManageDeals = () => {
                       color="green"
                       onClick={() => handleOpenDialog(deal)}
                       className="p-2"
+                      disabled={buttonDisabled}
                     >
                       <PencilSquareIcon className="h-5 w-5" />
                     </Button>
@@ -631,6 +660,7 @@ export const ManageDeals = () => {
                       color="red"
                       onClick={() => confirmDelete(deal._id, deal.title)}
                       className="p-2"
+                      disabled={buttonDisabled}
                     >
                       <TrashIcon className="h-5 w-5" />
                     </Button>
@@ -1506,10 +1536,11 @@ export const ManageDeals = () => {
             color="red"
             className="mr-2"
             variant="text"
+            disabled={isSubmitting}
           >
             Cancel
           </Button>
-          <Button onClick={handleSubmit} color="green" disabled={loading}>
+          <Button onClick={handleSubmit} color="green" disabled={loading || isSubmitting}>
             {loading ? "Saving..." : "Save"}
           </Button>
         </DialogFooter>
@@ -2074,6 +2105,7 @@ export const ManageDeals = () => {
             color="gray"
             onClick={() => setOpenDeleteDialog(false)}
             className="mr-1"
+            disabled={deleteInProgress}
           >
             Cancel
           </Button>
@@ -2081,8 +2113,9 @@ export const ManageDeals = () => {
             variant="gradient"
             color="red"
             onClick={() => handleDelete(deleteId)}
+            disabled={deleteInProgress}
           >
-            Delete
+            {deleteInProgress ? "Deleting..." : "Delete"}
           </Button>
         </DialogFooter>
       </Dialog>
