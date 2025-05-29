@@ -39,6 +39,9 @@ export function ManageUsers() {
   const [deleteId, setDeleteId] = useState(null);
   const [userName, setUserName] = useState("");
   const [showAdmins, setShowAdmins] = useState(true); // true = show admins, false = show users
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [buttonDisabled, setButtonDisabled] = useState(false);
+  const [deleteInProgress, setDeleteInProgress] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -55,6 +58,11 @@ export function ManageUsers() {
   };
 
   const handleOpenDialog = (user = null) => {
+    if (buttonDisabled) return;
+    
+    setButtonDisabled(true);
+    setTimeout(() => setButtonDisabled(false), 500); // Prevent double-clicks for 500ms
+    
     setCurrentUser(user);
     setFormData(
       user
@@ -78,18 +86,25 @@ export function ManageUsers() {
     setOpenDialog(false);
     setCurrentUser(null);
     setAlert({ message: "", type: "" });
+    setIsSubmitting(false);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Prevent duplicate submissions
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
     setLoading(true);
+    
     try {
       if (currentUser) {
         await axios.put(`/auth/users/${currentUser._id}`, formData);
-        setAlert({ message: "User  updated successfully!", type: "green" });
+        setAlert({ message: "User updated successfully!", type: "green" });
       } else {
         await axios.post("/auth/admin/create-user", formData);
-        setAlert({ message: "User  added successfully!", type: "green" });
+        setAlert({ message: "User added successfully!", type: "green" });
       }
       fetchUsers();
       handleCloseDialog();
@@ -101,19 +116,28 @@ export function ManageUsers() {
       });
     } finally {
       setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   const confirmDelete = (id, name) => {
+    if (buttonDisabled) return;
+    
+    setButtonDisabled(true);
+    setTimeout(() => setButtonDisabled(false), 500); // Prevent double-clicks for 500ms
+    
     setDeleteId(id);
     setUserName(name);
     setOpenDeleteDialog(true);
   };
 
   const handleDelete = async (id) => {
+    if (deleteInProgress) return;
+    
     try {
+      setDeleteInProgress(true);
       await axios.delete(`/auth/users/${id}`);
-      setAlert({ message: "User  deleted successfully!", type: "green" });
+      setAlert({ message: "User deleted successfully!", type: "green" });
       fetchUsers();
     } catch (error) {
       console.error("Error deleting user:", error);
@@ -121,6 +145,7 @@ export function ManageUsers() {
     } finally {
       setOpenDeleteDialog(false);
       setDeleteId(null);
+      setDeleteInProgress(false);
     }
   };
 
@@ -155,7 +180,7 @@ export function ManageUsers() {
             }}
           />
         </div>
-        <Button onClick={() => handleOpenDialog()} color="blue">
+        <Button onClick={() => handleOpenDialog()} color="blue" disabled={buttonDisabled}>
           Add User
         </Button>
       </div>
@@ -198,8 +223,11 @@ export function ManageUsers() {
                           : "text-gray-500"
                       }`}
                     >
-                      <Cog6ToothIcon strokeWidth={2} className="h-5 w-5" />
-                      {user.role}
+                      <Cog6ToothIcon
+                        strokeWidth={2}
+                        className="h-5 w-5 text-gray-600"
+                      />
+                      Role: {user.role}
                     </Typography>
                   </div>
 
@@ -218,6 +246,7 @@ export function ManageUsers() {
                         color="green"
                         onClick={() => handleOpenDialog(user)}
                         className="p-2"
+                        disabled={buttonDisabled}
                       >
                         <PencilSquareIcon className="h-5 w-5" />
                       </Button>
@@ -237,6 +266,7 @@ export function ManageUsers() {
                         color="red"
                         onClick={() => confirmDelete(user._id, user.name)}
                         className="p-2"
+                        disabled={buttonDisabled || user._id === localStorage.getItem("userId")}
                       >
                         <TrashIcon className="h-5 w-5" />
                       </Button>
@@ -250,7 +280,7 @@ export function ManageUsers() {
 
       <Dialog open={openDialog} handler={handleCloseDialog} size="md">
         <DialogHeader className="flex items-center justify-between">
-          {currentUser ? "Edit User" : "Add User"}{" "}
+          {currentUser ? "Edit User" : "Add User"}
           {alert.message && (
             <Alert
               color={alert.type}
@@ -264,7 +294,7 @@ export function ManageUsers() {
         <DialogBody>
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
-              label="User Name"
+              label="Name"
               value={formData.name}
               onChange={(e) =>
                 setFormData({ ...formData, name: e.target.value })
@@ -273,6 +303,7 @@ export function ManageUsers() {
             />
             <Input
               label="Email"
+              type="email"
               value={formData.email}
               onChange={(e) =>
                 setFormData({ ...formData, email: e.target.value })
@@ -280,13 +311,13 @@ export function ManageUsers() {
               required
             />
             <Input
-              label="Password"
+              label={currentUser ? "New Password (leave empty to keep current)" : "Password"}
               type="password"
               value={formData.password}
               onChange={(e) =>
                 setFormData({ ...formData, password: e.target.value })
               }
-              required={!currentUser} // Password is required only when adding a new user
+              required={!currentUser}
             />
             <Select
               label="Role"
@@ -294,22 +325,26 @@ export function ManageUsers() {
               onChange={(value) => setFormData({ ...formData, role: value })}
               required
             >
-              <Option value="user">User </Option>
+              <Option value="user">User</Option>
               <Option value="admin">Admin</Option>
             </Select>
           </form>
         </DialogBody>
         <DialogFooter>
-          <Button onClick={handleCloseDialog} color="red" variant="text">
+          <Button onClick={handleCloseDialog} color="red" variant="text" disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} color="green" disabled={loading}>
+          <Button onClick={handleSubmit} color="green" disabled={loading || isSubmitting}>
             {loading ? "Saving..." : "Save"}
           </Button>
         </DialogFooter>
       </Dialog>
 
-      <Dialog open={openDeleteDialog} handler={setOpenDeleteDialog}>
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={openDeleteDialog}
+        handler={() => setOpenDeleteDialog(false)}
+      >
         <DialogHeader>Confirm Delete</DialogHeader>
         <DialogBody>
           Are you sure you want to delete{" "}
@@ -321,6 +356,7 @@ export function ManageUsers() {
             color="gray"
             onClick={() => setOpenDeleteDialog(false)}
             className="mr-1"
+            disabled={deleteInProgress}
           >
             Cancel
           </Button>
@@ -328,8 +364,9 @@ export function ManageUsers() {
             variant="gradient"
             color="red"
             onClick={() => handleDelete(deleteId)}
+            disabled={deleteInProgress}
           >
-            Delete
+            {deleteInProgress ? "Deleting..." : "Delete"}
           </Button>
         </DialogFooter>
       </Dialog>

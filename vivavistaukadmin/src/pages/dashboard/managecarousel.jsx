@@ -21,6 +21,9 @@ export function ManageCarousel() {
   const [alert, setAlert] = useState({ message: "", type: "" });
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [buttonDisabled, setButtonDisabled] = useState(false);
+  const [deleteInProgress, setDeleteInProgress] = useState(false);
 
   useEffect(() => {
     fetchCarousels();
@@ -46,6 +49,11 @@ export function ManageCarousel() {
   };
 
   const handleOpenDialog = (carousel = null) => {
+    if (buttonDisabled) return;
+    
+    setButtonDisabled(true);
+    setTimeout(() => setButtonDisabled(false), 500); // Prevent double-clicks for 500ms
+    
     setCurrentCarousel(carousel);
     setFormData(carousel ? { images: carousel.images } : { images: [] });
     setOpenDialog(true);
@@ -54,13 +62,19 @@ export function ManageCarousel() {
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setCurrentCarousel(null);
+    setIsSubmitting(false);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (formData.images.length === 0) return;
-
+    
+    // Prevent duplicate submissions
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
     setLoading(true);
+    
     const formDataToSend = new FormData();
     formDataToSend.append("images", formData.images[0]); // Only one image
 
@@ -83,16 +97,25 @@ export function ManageCarousel() {
       setAlert({ message: "Error saving carousel", type: "red" });
     } finally {
       setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   const confirmDelete = (id) => {
+    if (buttonDisabled) return;
+    
+    setButtonDisabled(true);
+    setTimeout(() => setButtonDisabled(false), 500); // Prevent double-clicks for 500ms
+    
     setDeleteId(id);
     setOpenDeleteDialog(true);
   };
 
   const handleDelete = async () => {
+    if (deleteInProgress) return;
+    
     try {
+      setDeleteInProgress(true);
       await axios.delete(`/carousel/${deleteId}`);
       setAlert({ message: "Carousel deleted successfully!", type: "green" });
       fetchCarousels();
@@ -101,6 +124,7 @@ export function ManageCarousel() {
       setAlert({ message: "Error deleting carousel", type: "red" });
     } finally {
       setOpenDeleteDialog(false);
+      setDeleteInProgress(false);
     }
   };
 
@@ -117,7 +141,7 @@ export function ManageCarousel() {
       )}
 
       <div className="mb-4 flex justify-end">
-        <Button onClick={() => handleOpenDialog()} color="blue">
+        <Button onClick={() => handleOpenDialog()} color="blue" disabled={buttonDisabled}>
           Add Carousel
         </Button>
       </div>
@@ -147,6 +171,7 @@ export function ManageCarousel() {
                     color="green"
                     onClick={() => handleOpenDialog(carousel)}
                     className="p-2"
+                    disabled={buttonDisabled}
                   >
                     <PencilSquareIcon className="h-5 w-5" />
                   </Button>
@@ -155,6 +180,7 @@ export function ManageCarousel() {
                     color="red"
                     onClick={() => confirmDelete(carousel._id)}
                     className="p-2"
+                    disabled={buttonDisabled}
                   >
                     <TrashIcon className="h-5 w-5" />
                   </Button>
@@ -173,17 +199,6 @@ export function ManageCarousel() {
         </DialogHeader>
         <DialogBody>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/*              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) =>
-                  setFormData({
-                    images: Array.from(e.target.files).slice(0, 1),
-                  })
-                }
-                required
-              />
-  */}
             <input
               type="file"
               accept="image/*"
@@ -192,36 +207,40 @@ export function ManageCarousel() {
                 (e) => setFormData({ images: [e.target.files[0]] }) // store single image in array
               }
               required
+              disabled={isSubmitting}
             />
           </form>
         </DialogBody>
         <DialogFooter>
-          <Button onClick={handleCloseDialog} color="red" variant="text">
+          <Button onClick={handleCloseDialog} color="red" variant="text" disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} color="green" disabled={loading}>
+          <Button onClick={handleSubmit} color="green" disabled={loading || isSubmitting}>
             {loading ? "Saving..." : "Save"}
           </Button>
         </DialogFooter>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={openDeleteDialog}
-        handler={() => setOpenDeleteDialog(false)}
-      >
-        <DialogHeader>Confirm Deletion</DialogHeader>
-        <DialogBody>
-          <Typography>
-            Are you sure you want to delete this carousel?
-          </Typography>
-        </DialogBody>
-        <DialogFooter className="flex items-center justify-end gap-2">
-          <Button color="red" onClick={handleDelete}>
-            Delete
-          </Button>
-          <Button color="gray" onClick={() => setOpenDeleteDialog(false)}>
+      <Dialog open={openDeleteDialog} handler={() => setOpenDeleteDialog(false)}>
+        <DialogHeader>Confirm Delete</DialogHeader>
+        <DialogBody>Are you sure you want to delete this carousel?</DialogBody>
+        <DialogFooter>
+          <Button
+            variant="text"
+            color="gray"
+            onClick={() => setOpenDeleteDialog(false)}
+            className="mr-1"
+            disabled={deleteInProgress}
+          >
             Cancel
+          </Button>
+          <Button 
+            variant="gradient" 
+            color="red" 
+            onClick={() => handleDelete(deleteId)}
+            disabled={deleteInProgress}
+          >
+            {deleteInProgress ? "Deleting..." : "Delete"}
           </Button>
         </DialogFooter>
       </Dialog>

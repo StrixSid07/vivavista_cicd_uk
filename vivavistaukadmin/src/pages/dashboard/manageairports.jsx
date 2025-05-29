@@ -22,6 +22,9 @@ export function ManageAirports() {
   const [currentAirport, setCurrentAirport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState({ message: "", type: "" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [buttonDisabled, setButtonDisabled] = useState(false);
+  const [deleteInProgress, setDeleteInProgress] = useState(false);
 
   const categories = [
     "London",
@@ -64,6 +67,11 @@ export function ManageAirports() {
   };
 
   const handleOpenDialog = (airport = null) => {
+    if (buttonDisabled) return;
+    
+    setButtonDisabled(true);
+    setTimeout(() => setButtonDisabled(false), 500); // Prevent double-clicks for 500ms
+    
     setCurrentAirport(airport);
     setFormData(
       airport
@@ -82,11 +90,18 @@ export function ManageAirports() {
     setOpenDialog(false);
     setCurrentAirport(null);
     setAlert({ message: "", type: "" });
+    setIsSubmitting(false);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Prevent duplicate submissions
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
     setLoading(true);
+    
     try {
       if (currentAirport) {
         await axios.put(
@@ -108,17 +123,26 @@ export function ManageAirports() {
       setAlert({ message: "Error saving airport", type: "red" });
     } finally {
       setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   const confirmDelete = (id, name) => {
+    if (buttonDisabled) return;
+    
+    setButtonDisabled(true);
+    setTimeout(() => setButtonDisabled(false), 500); // Prevent double-clicks for 500ms
+    
     setDeleteId(id);
     setAirportName(name);
     setOpenDeleteDialog(true);
   };
 
   const handleDelete = async (id) => {
+    if (deleteInProgress) return;
+    
     try {
+      setDeleteInProgress(true);
       await axios.delete(`/airport/admin/${id}`);
       setAlert({
         message: "Airport deleted successfully!",
@@ -131,6 +155,7 @@ export function ManageAirports() {
     } finally {
       setOpenDeleteDialog(false);
       setDeleteId(null);
+      setDeleteInProgress(false);
     }
   };
 
@@ -147,7 +172,11 @@ export function ManageAirports() {
       )}
 
       <div className="mb-4 flex justify-end">
-        <Button onClick={() => handleOpenDialog()} color="blue">
+        <Button 
+          onClick={() => handleOpenDialog()} 
+          color="blue"
+          disabled={buttonDisabled}
+        >
           Add Airport
         </Button>
       </div>
@@ -188,6 +217,7 @@ export function ManageAirports() {
                       color="green"
                       onClick={() => handleOpenDialog(airport)}
                       className="p-2"
+                      disabled={buttonDisabled}
                     >
                       <PencilSquareIcon className="h-5 w-5" />
                     </Button>
@@ -207,6 +237,7 @@ export function ManageAirports() {
                       color="red"
                       onClick={() => confirmDelete(airport._id, airport.name)}
                       className="p-2"
+                      disabled={buttonDisabled}
                     >
                       <TrashIcon className="h-5 w-5" />
                     </Button>
@@ -274,10 +305,19 @@ export function ManageAirports() {
           </form>
         </DialogBody>
         <DialogFooter>
-          <Button onClick={handleCloseDialog} color="red" variant="text">
+          <Button 
+            onClick={handleCloseDialog} 
+            color="red" 
+            variant="text"
+            disabled={isSubmitting}
+          >
             Cancel
           </Button>
-          <Button onClick={handleSubmit} color="green" disabled={loading}>
+          <Button 
+            onClick={handleSubmit} 
+            color="green" 
+            disabled={loading || isSubmitting}
+          >
             {loading ? "Saving..." : "Save"}
           </Button>
         </DialogFooter>
@@ -299,6 +339,7 @@ export function ManageAirports() {
             color="gray"
             onClick={() => setOpenDeleteDialog(false)}
             className="mr-1"
+            disabled={deleteInProgress}
           >
             Cancel
           </Button>
@@ -306,8 +347,9 @@ export function ManageAirports() {
             variant="gradient"
             color="red"
             onClick={() => handleDelete(deleteId)}
+            disabled={deleteInProgress}
           >
-            Delete
+            {deleteInProgress ? "Deleting..." : "Delete"}
           </Button>
         </DialogFooter>
       </Dialog>

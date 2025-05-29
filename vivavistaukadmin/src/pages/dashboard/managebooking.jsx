@@ -68,6 +68,11 @@ export function ManageBooking() {
     departureDate: "",
     nights: 0,
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [buttonDisabled, setButtonDisabled] = useState(false);
+  const [deleteInProgress, setDeleteInProgress] = useState(false);
+  const [statusInProgress, setStatusInProgress] = useState(false);
+  const [emailInProgress, setEmailInProgress] = useState(false);
 
   useEffect(() => {
     fetchBookings();
@@ -95,6 +100,11 @@ export function ManageBooking() {
   };
 
   const handleOpenDialog = (booking = null) => {
+    if (buttonDisabled) return;
+    
+    setButtonDisabled(true);
+    setTimeout(() => setButtonDisabled(false), 500); // Prevent double-clicks for 500ms
+    
     if (booking) {
       // booking.dealId might be populated as an object { _id, title, ... }
       const bookingDealId =
@@ -154,11 +164,18 @@ export function ManageBooking() {
     setOpenDialog(false);
     setCurrentBooking(null);
     setAlert({ message: "", type: "" });
+    setIsSubmitting(false);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Prevent duplicate submissions
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
     setLoading(true);
+    
     try {
       if (currentBooking) {
         console.log(currentBooking._id);
@@ -176,17 +193,26 @@ export function ManageBooking() {
       setAlert({ message: "Error saving booking", type: "red" });
     } finally {
       setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   const confirmDelete = (id, name) => {
+    if (buttonDisabled) return;
+    
+    setButtonDisabled(true);
+    setTimeout(() => setButtonDisabled(false), 500); // Prevent double-clicks for 500ms
+    
     setDeleteId(id);
     setBookingName(name);
     setOpenDeleteDialog(true);
   };
 
   const handleDelete = async (id) => {
+    if (deleteInProgress) return;
+    
     try {
+      setDeleteInProgress(true);
       await axios.delete(`/bookings/${id}`);
       setAlert({ message: "Booking deleted successfully!", type: "green" });
       fetchBookings();
@@ -196,24 +222,32 @@ export function ManageBooking() {
     } finally {
       setOpenDeleteDialog(false);
       setDeleteId(null);
+      setDeleteInProgress(false);
     }
   };
 
-  // Open the status dialog for a given booking
   const handleOpenStatusDialog = (booking) => {
+    if (buttonDisabled) return;
+    
+    setButtonDisabled(true);
+    setTimeout(() => setButtonDisabled(false), 500); // Prevent double-clicks for 500ms
+    
     setStatusBooking(booking);
     setStatusValue(booking.status || "pending");
     setOpenStatusDialog(true);
   };
 
-  // Close/reset the status dialog
   const handleCloseStatusDialog = () => {
     setOpenStatusDialog(false);
     setStatusBooking(null);
+    setStatusInProgress(false);
   };
 
   const handleStatusSubmit = async () => {
+    if (statusInProgress) return;
+    
     try {
+      setStatusInProgress(true);
       await axios.put(`/bookings/${statusBooking._id}/status`, {
         status: statusValue,
       });
@@ -222,10 +256,17 @@ export function ManageBooking() {
     } catch (error) {
       console.error("Error updating status:", error);
       // you can show an alert here
+    } finally {
+      setStatusInProgress(false);
     }
   };
 
   const handleOpenViewDialog = (booking) => {
+    if (buttonDisabled) return;
+    
+    setButtonDisabled(true);
+    setTimeout(() => setButtonDisabled(false), 500); // Prevent double-clicks for 500ms
+    
     setCurrentBooking(booking);
     setOpenViewDialog(true);
   };
@@ -236,12 +277,18 @@ export function ManageBooking() {
   };
 
   const handleOpenEmailDialog = (booking) => {
+    if (buttonDisabled) return;
+    
+    setButtonDisabled(true);
+    setTimeout(() => setButtonDisabled(false), 500); // Prevent double-clicks for 500ms
+    
     const formattedDeparture = booking.selectedDate
       ? booking.selectedDate.split("T")[0]
       : "";
     setCurrentBooking(booking);
     console.log(booking);
     const selectedDeal = deals.find((d) => d.id === booking.dealId);
+
     setEmailData({
       name: booking.name,
       email: booking.email,
@@ -259,17 +306,24 @@ export function ManageBooking() {
   const handleCloseEmailDialog = () => {
     setOpenEmailDialog(false);
     setAlert({ message: "", type: "" });
+    setEmailInProgress(false);
   };
 
   const handleEmailSubmit = async (e) => {
     e.preventDefault();
+    
+    if (emailInProgress) return;
+    
     try {
+      setEmailInProgress(true);
       await axios.post("/mail/send-booking-info", emailData);
       setAlert({ message: "Booking confirmation sent!", type: "green" });
       handleCloseEmailDialog();
     } catch (error) {
       console.error("Error sending email:", error);
       setAlert({ message: "Failed to send confirmation email.", type: "red" });
+    } finally {
+      setEmailInProgress(false);
     }
   };
 
@@ -286,7 +340,7 @@ export function ManageBooking() {
       )}
 
       <div className="mb-4 flex justify-end">
-        <Button onClick={() => handleOpenDialog()} color="blue">
+        <Button onClick={() => handleOpenDialog()} color="blue" disabled={buttonDisabled}>
           Create New Booking
         </Button>
       </div>
@@ -396,6 +450,7 @@ export function ManageBooking() {
                             onClick={() => handleOpenStatusDialog(booking)}
                             color="blue"
                             className="capitalize"
+                            disabled={buttonDisabled}
                           >
                             {booking.status}
                           </Button>
@@ -415,6 +470,7 @@ export function ManageBooking() {
                             onClick={() => handleOpenStatusDialog(booking)}
                             color="blue"
                             className="capitalize"
+                            disabled={buttonDisabled}
                           >
                             {booking.status}
                           </Button>
@@ -434,6 +490,7 @@ export function ManageBooking() {
                             onClick={() => handleOpenStatusDialog(booking)}
                             color="blue"
                             className="capitalize"
+                            disabled={buttonDisabled}
                           >
                             {booking.status}
                           </Button>
@@ -456,6 +513,7 @@ export function ManageBooking() {
                         color="blue"
                         onClick={() => handleOpenViewDialog(booking)}
                         className="p-2"
+                        disabled={buttonDisabled}
                       >
                         <EyeIcon strokeWidth={2} className="h-5 w-5" />
                       </Button>
@@ -476,6 +534,7 @@ export function ManageBooking() {
                         color="green"
                         onClick={() => handleOpenDialog(booking)}
                         className="p-2"
+                        disabled={buttonDisabled}
                       >
                         <PencilSquareIcon className="h-5 w-5" />
                       </Button>
@@ -497,6 +556,7 @@ export function ManageBooking() {
                         color="red"
                         onClick={() => confirmDelete(booking._id, booking.name)}
                         className="p-2"
+                        disabled={buttonDisabled}
                       >
                         <TrashIcon className="h-5 w-5" />
                       </Button>
@@ -506,6 +566,7 @@ export function ManageBooking() {
                       <Button
                         onClick={() => handleOpenEmailDialog(booking)}
                         color="blue"
+                        disabled={buttonDisabled}
                       >
                         Send Confirmation Email
                       </Button>
@@ -927,13 +988,13 @@ export function ManageBooking() {
               }
             />
 
-            <Button type="submit" color="green">
-              Send Email
+            <Button type="submit" color="green" disabled={emailInProgress}>
+              {emailInProgress ? "Sending..." : "Send Email"}
             </Button>
           </form>
         </DialogBody>
         <DialogFooter>
-          <Button onClick={handleCloseEmailDialog} color="red">
+          <Button onClick={handleCloseEmailDialog} color="red" disabled={emailInProgress}>
             Cancel
           </Button>
         </DialogFooter>
@@ -963,11 +1024,16 @@ export function ManageBooking() {
             color="gray"
             onClick={handleCloseStatusDialog}
             className="mr-1"
+            disabled={statusInProgress}
           >
             Cancel
           </Button>
-          <Button onClick={handleStatusSubmit} color="green">
-            Save
+          <Button 
+            onClick={handleStatusSubmit} 
+            color="green"
+            disabled={statusInProgress}
+          >
+            {statusInProgress ? "Updating..." : "Save"}
           </Button>
         </DialogFooter>
       </Dialog>
@@ -1156,7 +1222,7 @@ export function ManageBooking() {
                 setFormData({ ...formData, children: e.target.value })
               }
             />
-            <Button type="submit" color="blue" disabled={loading}>
+            <Button type="submit" color="blue" disabled={loading || isSubmitting}>
               {loading
                 ? "Loading..."
                 : currentBooking
@@ -1166,7 +1232,7 @@ export function ManageBooking() {
           </form>
         </DialogBody>
         <DialogFooter>
-          <Button onClick={handleCloseDialog} color="red">
+          <Button onClick={handleCloseDialog} color="red" disabled={isSubmitting}>
             Cancel
           </Button>
         </DialogFooter>
@@ -1184,11 +1250,11 @@ export function ManageBooking() {
           </Typography>
         </DialogBody>
         <DialogFooter>
-          <Button onClick={() => setOpenDeleteDialog(false)} color="red">
+          <Button onClick={() => setOpenDeleteDialog(false)} color="red" disabled={deleteInProgress}>
             Cancel
           </Button>
-          <Button onClick={() => handleDelete(deleteId)} color="green">
-            Confirm
+          <Button onClick={() => handleDelete(deleteId)} color="green" disabled={deleteInProgress}>
+            {deleteInProgress ? "Deleting..." : "Confirm"}
           </Button>
         </DialogFooter>
       </Dialog>

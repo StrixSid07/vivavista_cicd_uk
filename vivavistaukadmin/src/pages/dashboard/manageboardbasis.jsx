@@ -15,53 +15,74 @@ import { PencilSquareIcon, TrashIcon } from "@heroicons/react/24/outline";
 import axios from "@/utils/axiosInstance";
 
 export function ManageBoardBasis() {
-  const [boardBasis, setBoardBasis] = useState([]);
+  const [boardbasiss, setBoardbasiss] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
-  const [currentBoardBasis, setCurrentBoardBasis] = useState(null);
+  const [currentBoardbasis, setCurrentBoardbasis] = useState(null);
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState({ message: "", type: "" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [buttonDisabled, setButtonDisabled] = useState(false);
+  const [deleteInProgress, setDeleteInProgress] = useState(false);
 
   // State for delete confirmation dialog
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
-  const [boardBasisName, setBoardBasisName] = useState("");
+  const [boardbasisName, setBoardbasisName] = useState("");
 
   const [formData, setFormData] = useState({
     name: "",
   });
 
   useEffect(() => {
-    fetchBoardBasis();
+    fetchBoardbasiss();
   }, []);
 
-  const fetchBoardBasis = async () => {
+  const fetchBoardbasiss = async () => {
     try {
       const response = await axios.get("/boardbasis/boardbasis");
-      setBoardBasis(response.data);
+      setBoardbasiss(response.data);
     } catch (error) {
       console.error("Error fetching board basis:", error);
       setAlert({ message: "Error fetching board basis", type: "red" });
     }
   };
 
-  const handleOpenDialog = (boardBasis = null) => {
-    setCurrentBoardBasis(boardBasis);
-    setFormData(boardBasis ? { name: boardBasis.name } : { name: "" });
+  const handleOpenDialog = (boardbasis = null) => {
+    if (buttonDisabled) return;
+    
+    setButtonDisabled(true);
+    setTimeout(() => setButtonDisabled(false), 500); // Prevent double-clicks for 500ms
+    
+    setCurrentBoardbasis(boardbasis);
+    setFormData(
+      boardbasis
+        ? {
+            name: boardbasis.name,
+          }
+        : { name: "" }
+    );
     setOpenDialog(true);
   };
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
-    setCurrentBoardBasis(null);
+    setCurrentBoardbasis(null);
     setAlert({ message: "", type: "" });
+    setIsSubmitting(false);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Prevent duplicate submissions
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
     setLoading(true);
+    
     try {
-      if (currentBoardBasis) {
-        await axios.put(`/boardbasis/${currentBoardBasis._id}`, formData);
+      if (currentBoardbasis) {
+        await axios.put(`/boardbasis/${currentBoardbasis._id}`, formData);
         setAlert({
           message: "Board Basis updated successfully!",
           type: "green",
@@ -70,38 +91,47 @@ export function ManageBoardBasis() {
         await axios.post("/boardbasis", formData);
         setAlert({ message: "Board Basis added successfully!", type: "green" });
       }
-      fetchBoardBasis();
+      fetchBoardbasiss();
       handleCloseDialog();
     } catch (error) {
       console.error("Error saving board basis:", error);
-      const message =
-        error.response?.data?.message || "Error saving board basis";
+      const message = error.response?.data?.message || "Error saving board basis";
       setAlert({ message, type: "red" });
     } finally {
       setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   const confirmDelete = (id, name) => {
+    if (buttonDisabled) return;
+    
+    setButtonDisabled(true);
+    setTimeout(() => setButtonDisabled(false), 500); // Prevent double-clicks for 500ms
+    
     setDeleteId(id);
-    setBoardBasisName(name);
+    setBoardbasisName(name);
     setOpenDeleteDialog(true);
   };
 
   const handleDelete = async (id) => {
+    if (deleteInProgress) return;
+    
     try {
+      setDeleteInProgress(true);
       await axios.delete(`/boardbasis/${id}`);
       setAlert({
         message: "Board Basis deleted successfully!",
         type: "green",
       });
-      fetchBoardBasis();
+      fetchBoardbasiss();
     } catch (error) {
       console.error("Error deleting board basis:", error);
       setAlert({ message: "Error deleting board basis", type: "red" });
     } finally {
       setOpenDeleteDialog(false);
       setDeleteId(null);
+      setDeleteInProgress(false);
     }
   };
 
@@ -118,16 +148,16 @@ export function ManageBoardBasis() {
       )}
 
       <div className="mb-4 flex justify-end">
-        <Button onClick={() => handleOpenDialog()} color="blue">
+        <Button onClick={() => handleOpenDialog()} color="blue" disabled={buttonDisabled}>
           Add Board Basis
         </Button>
       </div>
 
       <Card className="h-[calc(100vh-150px)] overflow-y-auto rounded-xl p-4 shadow-lg scrollbar-thin scrollbar-track-gray-200 scrollbar-thumb-blue-500">
         <div className="space-y-6">
-          {boardBasis.map((basis) => (
+          {boardbasiss.map((boardbasis) => (
             <Card
-              key={basis._id}
+              key={boardbasis._id}
               className="group p-4 shadow-md transition-colors duration-300 ease-in-out hover:bg-blue-50"
             >
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -137,7 +167,7 @@ export function ManageBoardBasis() {
                     color="deep-orange"
                     className="flex items-center gap-2"
                   >
-                    {basis.name}
+                    {boardbasis.name}
                   </Typography>
                 </div>
 
@@ -154,8 +184,9 @@ export function ManageBoardBasis() {
                     <Button
                       variant="text"
                       color="green"
-                      onClick={() => handleOpenDialog(basis)}
+                      onClick={() => handleOpenDialog(boardbasis)}
                       className="p-2"
+                      disabled={buttonDisabled}
                     >
                       <PencilSquareIcon className="h-5 w-5" />
                     </Button>
@@ -173,8 +204,9 @@ export function ManageBoardBasis() {
                     <Button
                       variant="text"
                       color="red"
-                      onClick={() => confirmDelete(basis._id, basis.name)}
+                      onClick={() => confirmDelete(boardbasis._id, boardbasis.name)}
                       className="p-2"
+                      disabled={buttonDisabled}
                     >
                       <TrashIcon className="h-5 w-5" />
                     </Button>
@@ -188,7 +220,7 @@ export function ManageBoardBasis() {
 
       <Dialog open={openDialog} handler={handleCloseDialog} size="md">
         <DialogHeader className="flex items-center justify-between">
-          {currentBoardBasis ? "Edit Board Basis" : "Add Board Basis"}
+          {currentBoardbasis ? "Edit Board Basis" : "Add Board Basis"}
           {alert.message && (
             <Alert
               color={alert.type}
@@ -212,10 +244,10 @@ export function ManageBoardBasis() {
           </form>
         </DialogBody>
         <DialogFooter>
-          <Button onClick={handleCloseDialog} color="red" variant="text">
+          <Button onClick={handleCloseDialog} color="red" variant="text" disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} color="green" disabled={loading}>
+          <Button onClick={handleSubmit} color="green" disabled={loading || isSubmitting}>
             {loading ? "Saving..." : "Save"}
           </Button>
         </DialogFooter>
@@ -229,7 +261,7 @@ export function ManageBoardBasis() {
         <DialogHeader>Confirm Delete</DialogHeader>
         <DialogBody>
           Are you sure you want to delete{" "}
-          <span className="font-semibold text-red-600">{boardBasisName}</span>?
+          <span className="font-semibold text-red-600">{boardbasisName}</span>?
         </DialogBody>
         <DialogFooter>
           <Button
@@ -237,6 +269,7 @@ export function ManageBoardBasis() {
             color="gray"
             onClick={() => setOpenDeleteDialog(false)}
             className="mr-1"
+            disabled={deleteInProgress}
           >
             Cancel
           </Button>
@@ -244,8 +277,9 @@ export function ManageBoardBasis() {
             variant="gradient"
             color="red"
             onClick={() => handleDelete(deleteId)}
+            disabled={deleteInProgress}
           >
-            Delete
+            {deleteInProgress ? "Deleting..." : "Delete"}
           </Button>
         </DialogFooter>
       </Dialog>

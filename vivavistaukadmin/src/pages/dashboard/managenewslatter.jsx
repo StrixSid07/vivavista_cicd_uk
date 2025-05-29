@@ -27,6 +27,10 @@ export function ManageNewsletter() {
   const [loading, setLoading] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [buttonDisabled, setButtonDisabled] = useState(false);
+  const [deleteInProgress, setDeleteInProgress] = useState(false);
+  const [downloadInProgress, setDownloadInProgress] = useState(false);
 
   useEffect(() => {
     fetchSubscribers();
@@ -51,8 +55,21 @@ export function ManageNewsletter() {
     }
   };
 
+  const handleAddDialog = () => {
+    if (buttonDisabled) return;
+    
+    setButtonDisabled(true);
+    setTimeout(() => setButtonDisabled(false), 500); // Prevent double-clicks for 500ms
+    
+    setOpenDialog(true);
+  };
+
   const handleAdd = async () => {
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
     setLoading(true);
+    
     try {
       await axios.post("/home/subscribe-newsletter", { email });
       setAlert({ message: "Subscriber added successfully!", type: "green" });
@@ -66,11 +83,25 @@ export function ManageNewsletter() {
       });
     } finally {
       setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
+  const handleDeleteDialog = (id) => {
+    if (buttonDisabled) return;
+    
+    setButtonDisabled(true);
+    setTimeout(() => setButtonDisabled(false), 500); // Prevent double-clicks for 500ms
+    
+    setDeleteId(id);
+    setOpenDeleteDialog(true);
+  };
+
   const handleDelete = async () => {
+    if (deleteInProgress) return;
+    
     try {
+      setDeleteInProgress(true);
       await axios.delete(`/home/newsletter/${deleteId}`);
       setAlert({ message: "Subscriber removed successfully!", type: "green" });
       fetchSubscribers();
@@ -80,6 +111,36 @@ export function ManageNewsletter() {
         message: err?.response?.data?.message || "Failed to delete",
         type: "red",
       });
+    } finally {
+      setDeleteInProgress(false);
+    }
+  };
+
+  const handleDownloadExcel = async () => {
+    if (downloadInProgress || buttonDisabled) return;
+    
+    setButtonDisabled(true);
+    setDownloadInProgress(true);
+    
+    try {
+      const res = await axios.get("/newslatter/newsletter/export", {
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "subscribers.xlsx");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      setAlert({
+        message: "Failed to download subscriber list",
+        type: "red",
+      });
+    } finally {
+      setDownloadInProgress(false);
+      setTimeout(() => setButtonDisabled(false), 500);
     }
   };
 
@@ -95,33 +156,20 @@ export function ManageNewsletter() {
       )}
 
       <div className="mb-4 flex justify-end gap-2">
-        <Button onClick={() => setOpenDialog(true)} color="blue">
+        <Button 
+          onClick={handleAddDialog} 
+          color="blue"
+          disabled={buttonDisabled}
+        >
           Add Subscriber
         </Button>
         <Button
           variant="outlined"
           color="green"
-          onClick={async () => {
-            try {
-              const res = await axios.get("/newslatter/newsletter/export", {
-                responseType: "blob",
-              });
-              const url = window.URL.createObjectURL(new Blob([res.data]));
-              const link = document.createElement("a");
-              link.href = url;
-              link.setAttribute("download", "subscribers.xlsx");
-              document.body.appendChild(link);
-              link.click();
-              link.remove();
-            } catch (err) {
-              setAlert({
-                message: "Failed to download subscriber list",
-                type: "red",
-              });
-            }
-          }}
+          onClick={handleDownloadExcel}
+          disabled={downloadInProgress || buttonDisabled}
         >
-          Download Excel
+          {downloadInProgress ? "Downloading..." : "Download Excel"}
         </Button>
       </div>
 
@@ -153,6 +201,7 @@ export function ManageNewsletter() {
                         type: "green",
                       });
                     }}
+                    disabled={buttonDisabled}
                   >
                     <DocumentDuplicateIcon className="h-4 w-4 text-gray-600" />
                   </Button>
@@ -162,10 +211,8 @@ export function ManageNewsletter() {
                 <Button
                   variant="text"
                   color="red"
-                  onClick={() => {
-                    setDeleteId(subscriber._id);
-                    setOpenDeleteDialog(true);
-                  }}
+                  onClick={() => handleDeleteDialog(subscriber._id)}
+                  disabled={buttonDisabled}
                 >
                   <TrashIcon className="h-5 w-5" />
                 </Button>
@@ -194,33 +241,51 @@ export function ManageNewsletter() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             icon={<UserPlusIcon className="h-5 w-5 text-blue-500" />}
+            disabled={isSubmitting}
           />
         </DialogBody>
         <DialogFooter>
-          <Button variant="text" onClick={() => setOpenDialog(false)}>
+          <Button 
+            variant="text" 
+            onClick={() => setOpenDialog(false)}
+            disabled={isSubmitting}
+          >
             Cancel
           </Button>
-          <Button color="green" onClick={handleAdd} disabled={loading}>
+          <Button 
+            color="green" 
+            onClick={handleAdd} 
+            disabled={loading || isSubmitting}
+          >
             {loading ? "Adding..." : "Add"}
           </Button>
         </DialogFooter>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Dialog */}
       <Dialog
         open={openDeleteDialog}
         handler={() => setOpenDeleteDialog(false)}
+        size="sm"
       >
         <DialogHeader>Confirm Delete</DialogHeader>
         <DialogBody>
-          Are you sure you want to remove this subscriber?
+          Are you sure you want to delete this subscriber?
         </DialogBody>
         <DialogFooter>
-          <Button variant="text" onClick={() => setOpenDeleteDialog(false)}>
+          <Button 
+            variant="text" 
+            onClick={() => setOpenDeleteDialog(false)}
+            disabled={deleteInProgress}
+          >
             Cancel
           </Button>
-          <Button color="red" onClick={handleDelete}>
-            Delete
+          <Button 
+            color="red" 
+            onClick={handleDelete}
+            disabled={deleteInProgress}
+          >
+            {deleteInProgress ? "Deleting..." : "Delete"}
           </Button>
         </DialogFooter>
       </Dialog>

@@ -35,6 +35,10 @@ export function ManageTerms() {
   const [deleteId, setDeleteId] = useState(null);
   const [termTitle, setTermTitle] = useState("");
   const [openViewDialog, setOpenViewDialog] = useState(false); // State for view dialog
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [buttonDisabled, setButtonDisabled] = useState(false);
+  const [deleteInProgress, setDeleteInProgress] = useState(false);
+  const [viewInProgress, setViewInProgress] = useState(false);
 
   useEffect(() => {
     fetchTerms();
@@ -51,6 +55,11 @@ export function ManageTerms() {
   };
 
   const handleOpenDialog = (term = null) => {
+    if (buttonDisabled) return;
+    
+    setButtonDisabled(true);
+    setTimeout(() => setButtonDisabled(false), 500); // Prevent double-clicks for 500ms
+    
     setCurrentTerm(term);
     setFormData(
       term
@@ -72,9 +81,15 @@ export function ManageTerms() {
     setOpenDialog(false);
     setCurrentTerm(null);
     setAlert({ message: "", type: "" });
+    setIsSubmitting(false);
   };
 
   const handleViewTerm = (term) => {
+    if (buttonDisabled) return;
+    
+    setButtonDisabled(true);
+    setTimeout(() => setButtonDisabled(false), 500); // Prevent double-clicks for 500ms
+    
     setCurrentTerm(term);
     setOpenViewDialog(true);
   };
@@ -86,7 +101,13 @@ export function ManageTerms() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Prevent duplicate submissions
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
     setLoading(true);
+    
     try {
       const data = {
         title: formData.title,
@@ -110,17 +131,26 @@ export function ManageTerms() {
       setAlert({ message: serverMessage, type: "red" });
     } finally {
       setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   const confirmDelete = (id, title) => {
+    if (buttonDisabled) return;
+    
+    setButtonDisabled(true);
+    setTimeout(() => setButtonDisabled(false), 500); // Prevent double-clicks for 500ms
+    
     setDeleteId(id);
     setTermTitle(title);
     setOpenDeleteDialog(true);
   };
 
   const handleDelete = async (id) => {
+    if (deleteInProgress) return;
+    
     try {
+      setDeleteInProgress(true);
       await axios.delete(`/terms/${id}`);
       setAlert({ message: "Term deleted successfully!", type: "green" });
       fetchTerms();
@@ -130,6 +160,7 @@ export function ManageTerms() {
     } finally {
       setOpenDeleteDialog(false);
       setDeleteId(null);
+      setDeleteInProgress(false);
     }
   };
 
@@ -154,7 +185,11 @@ export function ManageTerms() {
       )}
 
       <div className="mb-4 flex justify-end">
-        <Button onClick={() => handleOpenDialog()} color="blue">
+        <Button 
+          onClick={() => handleOpenDialog()} 
+          color="blue"
+          disabled={buttonDisabled}
+        >
           Add Term
         </Button>
       </div>
@@ -173,6 +208,7 @@ export function ManageTerms() {
                   onClick={() => handleViewTerm(term)}
                   size="sm"
                   className="flex items-center"
+                  disabled={buttonDisabled}
                 >
                   <EyeIcon className="h-5 w-5" />
                 </Button>
@@ -181,6 +217,7 @@ export function ManageTerms() {
                   onClick={() => handleOpenDialog(term)}
                   size="sm"
                   className="flex items-center"
+                  disabled={buttonDisabled}
                 >
                   <PencilSquareIcon className="h-5 w-5" />
                 </Button>
@@ -189,6 +226,7 @@ export function ManageTerms() {
                   onClick={() => confirmDelete(term._id, term.title)}
                   size="sm"
                   className="flex items-center"
+                  disabled={buttonDisabled}
                 >
                   <TrashIcon className="h-5 w-5" />
                 </Button>
@@ -199,7 +237,7 @@ export function ManageTerms() {
       </Card>
 
       {/* View Term Dialog */}
-      <Dialog open={openViewDialog} handler={handleCloseViewDialog}>
+      <Dialog open={openViewDialog} handler={handleCloseViewDialog} size="lg">
         <DialogHeader>
           <Typography variant="h5" className="text-lg font-bold">
             {currentTerm?.title}
@@ -212,29 +250,21 @@ export function ManageTerms() {
           />
         </DialogBody>
         <DialogFooter>
-          <Button color="red" onClick={handleCloseViewDialog}>
-            <XMarkIcon className="h-5 w-5" />
+          <Button 
+            onClick={handleCloseViewDialog} 
+            color="red"
+          >
+            Close
           </Button>
         </DialogFooter>
       </Dialog>
 
       {/* Add/Edit Term Dialog */}
-      <Dialog open={openDialog} handler={handleCloseDialog}>
-        <DialogHeader className="flex items-start justify-between">
-          <Typography variant="h5" className="w-36 text-lg font-bold">
-            {currentTerm ? "Edit Term" : "Add Term"}
-          </Typography>
-          {alert.message && (
-            <Alert
-              color={alert.type}
-              onClose={() => setAlert({ message: "", type: "" })}
-              className="mb-4"
-            >
-              {alert.message}
-            </Alert>
-          )}
+      <Dialog open={openDialog} handler={handleCloseDialog} size="lg">
+        <DialogHeader className="text-base font-semibold">
+          {currentTerm ? "Edit Term" : "Add Term"}
         </DialogHeader>
-        <DialogBody className="h-[480px] overflow-y-auto scrollbar-thin scrollbar-track-gray-200 scrollbar-thumb-blue-500">
+        <DialogBody>
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
               <label className="block text-sm font-semibold text-gray-700">
@@ -278,16 +308,25 @@ export function ManageTerms() {
                 required
               />
             </div>
-            <DialogFooter className="flex items-center justify-end gap-2">
-              <Button type="submit" color="green" disabled={loading}>
-                {loading ? "Saving..." : "Save"}
-              </Button>
-              <Button color="red" onClick={handleCloseDialog}>
-                Cancel
-              </Button>
-            </DialogFooter>
           </form>
         </DialogBody>
+        <DialogFooter>
+          <Button 
+            onClick={handleCloseDialog} 
+            color="red" 
+            variant="text"
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSubmit} 
+            color="green"
+            disabled={loading || isSubmitting}
+          >
+            {loading ? "Saving..." : "Save"}
+          </Button>
+        </DialogFooter>
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
@@ -295,18 +334,27 @@ export function ManageTerms() {
         open={openDeleteDialog}
         handler={() => setOpenDeleteDialog(false)}
       >
-        <DialogHeader>Confirm Deletion</DialogHeader>
+        <DialogHeader>Confirm Delete</DialogHeader>
         <DialogBody>
-          <Typography>
-            Are you sure you want to delete the term "{termTitle}"?
-          </Typography>
+          Are you sure you want to delete "{termTitle}"?
         </DialogBody>
-        <DialogFooter className="flex items-center justify-end gap-2">
-          <Button color="red" onClick={() => handleDelete(deleteId)}>
-            Delete
-          </Button>
-          <Button color="gray" onClick={() => setOpenDeleteDialog(false)}>
+        <DialogFooter>
+          <Button
+            variant="text"
+            color="gray"
+            onClick={() => setOpenDeleteDialog(false)}
+            className="mr-1"
+            disabled={deleteInProgress}
+          >
             Cancel
+          </Button>
+          <Button
+            variant="gradient"
+            color="red"
+            onClick={() => handleDelete(deleteId)}
+            disabled={deleteInProgress}
+          >
+            {deleteInProgress ? "Deleting..." : "Delete"}
           </Button>
         </DialogFooter>
       </Dialog>

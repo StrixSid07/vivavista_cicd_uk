@@ -14,6 +14,8 @@ export function ManageDealExternal() {
   const [uploadingType, setUploadingType] = useState(null);
   const [message, setMessage] = useState({ type: "", text: "" });
   const [openAlert, setOpenAlert] = useState(false);
+  const [buttonDisabled, setButtonDisabled] = useState(false);
+  const [downloadInProgress, setDownloadInProgress] = useState(false);
 
   const handleFileChange = (e) => {
     const selected = e.target.files[0];
@@ -40,6 +42,9 @@ export function ManageDealExternal() {
       setOpenAlert(true);
       return;
     }
+
+    // Prevent duplicate submissions
+    if (uploadingType) return;
 
     const formData = new FormData();
     formData.append("file", file);
@@ -76,6 +81,11 @@ export function ManageDealExternal() {
   };
 
   const downloadFile = async (endpoint, filename) => {
+    if (downloadInProgress || buttonDisabled) return;
+    
+    setButtonDisabled(true);
+    setDownloadInProgress(true);
+    
     try {
       const res = await axios.get(`/admindealsexternal/${endpoint}`, {
         responseType: "blob",
@@ -94,6 +104,9 @@ export function ManageDealExternal() {
         text: "Download failed. Please try again.",
       });
       setOpenAlert(true);
+    } finally {
+      setDownloadInProgress(false);
+      setTimeout(() => setButtonDisabled(false), 500);
     }
   };
 
@@ -133,22 +146,25 @@ export function ManageDealExternal() {
             <Button
               color="blue"
               onClick={() => downloadFile("template", "DealsTemplate.xlsx")}
+              disabled={downloadInProgress || buttonDisabled}
             >
-              Download Deals Template
+              {downloadInProgress ? <Spinner className="h-4 w-4" /> : "Download Deals Template"}
             </Button>
             <Button
               color="green"
               onClick={() => downloadFile("download-all", "AllDeals.xlsx")}
+              disabled={downloadInProgress || buttonDisabled}
             >
-              Download All Deals
+              {downloadInProgress ? <Spinner className="h-4 w-4" /> : "Download All Deals"}
             </Button>
             <Button
               color="teal"
               onClick={() =>
                 downloadFile("price-template", "DealPriceTemplate.xlsx")
               }
+              disabled={downloadInProgress || buttonDisabled}
             >
-              Download Price Template
+              {downloadInProgress ? <Spinner className="h-4 w-4" /> : "Download Price Template"}
             </Button>
           </div>
         </div>
@@ -167,6 +183,7 @@ export function ManageDealExternal() {
               onChange={handleFileChange}
               required
               className="block w-full max-w-xs text-sm text-gray-900 file:mr-4 file:rounded-md file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-blue-600 hover:file:bg-blue-100"
+              disabled={uploadingType !== null}
             />
           </div>
         </div>
@@ -181,7 +198,7 @@ export function ManageDealExternal() {
           <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
             <Button
               onClick={() => handleUpload("bulk-upload")}
-              disabled={isUploading("bulk-upload")}
+              disabled={isUploading("bulk-upload") || isUploading("bulk-update") || isUploading("bulk-upload-price") || isUploading("bulk-upload-update")}
               color="purple"
             >
               {isUploading("bulk-upload") ? (
@@ -193,7 +210,7 @@ export function ManageDealExternal() {
 
             <Button
               onClick={() => handleUpload("bulk-update")}
-              disabled={isUploading("bulk-update")}
+              disabled={isUploading("bulk-update") || isUploading("bulk-upload") || isUploading("bulk-upload-price") || isUploading("bulk-upload-update")}
               color="deep-purple"
             >
               {isUploading("bulk-update") ? (
@@ -205,7 +222,7 @@ export function ManageDealExternal() {
 
             <Button
               onClick={() => handleUpload("bulk-upload-price")}
-              disabled={isUploading("bulk-upload-price")}
+              disabled={isUploading("bulk-upload-price") || isUploading("bulk-upload") || isUploading("bulk-update") || isUploading("bulk-upload-update")}
               color="cyan"
             >
               {isUploading("bulk-upload-price") ? (
@@ -214,10 +231,10 @@ export function ManageDealExternal() {
                 "Bulk Upload Prices"
               )}
             </Button>
-
+            
             <Button
               onClick={() => handleUpload("bulk-upload-update")}
-              disabled={isUploading("bulk-upload-update")}
+              disabled={isUploading("bulk-upload-update") || isUploading("bulk-upload") || isUploading("bulk-update") || isUploading("bulk-upload-price")}
               color="indigo"
             >
               {isUploading("bulk-upload-update") ? (
@@ -232,3 +249,5 @@ export function ManageDealExternal() {
     </Card>
   );
 }
+
+export default ManageDealExternal;

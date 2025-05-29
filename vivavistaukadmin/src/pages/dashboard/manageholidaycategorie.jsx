@@ -14,12 +14,15 @@ import {
 import { PencilSquareIcon, TrashIcon } from "@heroicons/react/24/outline";
 import axios from "@/utils/axiosInstance";
 
-export function ManageHolidayCategories() {
+export function ManageHolidayCategorie() {
   const [holidays, setHolidays] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [currentHoliday, setCurrentHoliday] = useState(null);
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState({ message: "", type: "" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [buttonDisabled, setButtonDisabled] = useState(false);
+  const [deleteInProgress, setDeleteInProgress] = useState(false);
 
   // State for delete confirmation dialog
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
@@ -45,8 +48,19 @@ export function ManageHolidayCategories() {
   };
 
   const handleOpenDialog = (holiday = null) => {
+    if (buttonDisabled) return;
+    
+    setButtonDisabled(true);
+    setTimeout(() => setButtonDisabled(false), 500); // Prevent double-clicks for 500ms
+    
     setCurrentHoliday(holiday);
-    setFormData(holiday ? { name: holiday.name } : { name: "" });
+    setFormData(
+      holiday
+        ? {
+            name: holiday.name,
+          }
+        : { name: "" }
+    );
     setOpenDialog(true);
   };
 
@@ -54,11 +68,18 @@ export function ManageHolidayCategories() {
     setOpenDialog(false);
     setCurrentHoliday(null);
     setAlert({ message: "", type: "" });
+    setIsSubmitting(false);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Prevent duplicate submissions
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
     setLoading(true);
+    
     try {
       if (currentHoliday) {
         await axios.put(`/holidays/${currentHoliday._id}`, formData);
@@ -77,17 +98,26 @@ export function ManageHolidayCategories() {
       setAlert({ message: "Error saving holiday", type: "red" });
     } finally {
       setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   const confirmDelete = (id, name) => {
+    if (buttonDisabled) return;
+    
+    setButtonDisabled(true);
+    setTimeout(() => setButtonDisabled(false), 500); // Prevent double-clicks for 500ms
+    
     setDeleteId(id);
     setHolidayName(name);
     setOpenDeleteDialog(true);
   };
 
   const handleDelete = async (id) => {
+    if (deleteInProgress) return;
+    
     try {
+      setDeleteInProgress(true);
       await axios.delete(`/holidays/${id}`);
       setAlert({
         message: "Holiday deleted successfully!",
@@ -100,6 +130,7 @@ export function ManageHolidayCategories() {
     } finally {
       setOpenDeleteDialog(false);
       setDeleteId(null);
+      setDeleteInProgress(false);
     }
   };
 
@@ -116,7 +147,7 @@ export function ManageHolidayCategories() {
       )}
 
       <div className="mb-4 flex justify-end">
-        <Button onClick={() => handleOpenDialog()} color="blue">
+        <Button onClick={() => handleOpenDialog()} color="blue" disabled={buttonDisabled}>
           Add Holiday Category
         </Button>
       </div>
@@ -154,6 +185,7 @@ export function ManageHolidayCategories() {
                       color="green"
                       onClick={() => handleOpenDialog(holiday)}
                       className="p-2"
+                      disabled={buttonDisabled}
                     >
                       <PencilSquareIcon className="h-5 w-5" />
                     </Button>
@@ -173,6 +205,7 @@ export function ManageHolidayCategories() {
                       color="red"
                       onClick={() => confirmDelete(holiday._id, holiday.name)}
                       className="p-2"
+                      disabled={buttonDisabled}
                     >
                       <TrashIcon className="h-5 w-5" />
                     </Button>
@@ -210,10 +243,10 @@ export function ManageHolidayCategories() {
           </form>
         </DialogBody>
         <DialogFooter>
-          <Button onClick={handleCloseDialog} color="red" variant="text">
+          <Button onClick={handleCloseDialog} color="red" variant="text" disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} color="green" disabled={loading}>
+          <Button onClick={handleSubmit} color="green" disabled={loading || isSubmitting}>
             {loading ? "Saving..." : "Save"}
           </Button>
         </DialogFooter>
@@ -235,6 +268,7 @@ export function ManageHolidayCategories() {
             color="gray"
             onClick={() => setOpenDeleteDialog(false)}
             className="mr-1"
+            disabled={deleteInProgress}
           >
             Cancel
           </Button>
@@ -242,8 +276,9 @@ export function ManageHolidayCategories() {
             variant="gradient"
             color="red"
             onClick={() => handleDelete(deleteId)}
+            disabled={deleteInProgress}
           >
-            Delete
+            {deleteInProgress ? "Deleting..." : "Delete"}
           </Button>
         </DialogFooter>
       </Dialog>
@@ -251,4 +286,4 @@ export function ManageHolidayCategories() {
   );
 }
 
-export default ManageHolidayCategories;
+export default ManageHolidayCategorie;

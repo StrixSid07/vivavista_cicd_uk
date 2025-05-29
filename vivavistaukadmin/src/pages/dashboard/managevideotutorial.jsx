@@ -161,8 +161,14 @@ const tutorials = [
 export function AdminVideoTutorials() {
   const [selectedTutorial, setSelectedTutorial] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
+  const [buttonDisabled, setButtonDisabled] = useState(false);
 
   const handleOpenDialog = (tutorial) => {
+    if (buttonDisabled) return;
+    
+    setButtonDisabled(true);
+    setTimeout(() => setButtonDisabled(false), 500); // Prevent double-clicks for 500ms
+    
     setSelectedTutorial(tutorial);
     setOpenDialog(true);
   };
@@ -200,17 +206,21 @@ export function AdminVideoTutorials() {
                     className="h-40 w-full rounded-md object-cover shadow"
                   />
                 </div>
+
+                <Typography className="mt-3 text-sm text-gray-700">
+                  {tutorial.notes}
+                </Typography>
               </div>
 
-              <div className="mt-4 flex items-center justify-end">
+              <div className="mt-4">
                 <Button
                   color="blue"
-                  variant="gradient"
-                  className="flex items-center gap-2"
                   onClick={() => handleOpenDialog(tutorial)}
+                  className="flex items-center gap-2"
+                  fullWidth
+                  disabled={buttonDisabled}
                 >
-                  <PlayIcon className="h-5 w-5" />
-                  View
+                  <PlayIcon className="h-5 w-5" /> Watch Tutorial
                 </Button>
               </div>
             </Card>
@@ -218,40 +228,56 @@ export function AdminVideoTutorials() {
         </div>
       </Card>
 
-      {/* Dialog */}
       <Dialog open={openDialog} handler={handleCloseDialog} size="xl">
-        <DialogHeader className="flex justify-between">
-          <Typography variant="h5" className="text-blue-700">
-            {selectedTutorial?.title}
-          </Typography>
+        <DialogHeader className="text-lg font-semibold">
+          {selectedTutorial?.title} Tutorial
         </DialogHeader>
-        <DialogBody className="h-[500px] space-y-6 overflow-y-auto scrollbar-thin scrollbar-track-gray-200 scrollbar-thumb-blue-500">
-          <video
-            src={selectedTutorial?.videoUrl}
-            controls
-            className="h-96 w-full rounded-lg object-contain"
-          />
-          <div>
-            <Typography variant="h6" className="mb-2 text-gray-800">
-              Notes:
-            </Typography>
-            <Typography className="text-sm text-gray-700">
-              {selectedTutorial?.notes}
-            </Typography>
-          </div>
-          <div>
-            <Typography variant="h6" className="mb-2 text-gray-800">
-              Checklist:
-            </Typography>
-            <ul className="list-disc pl-6 text-sm text-gray-700">
-              {selectedTutorial?.checklist.map((item, index) => (
-                <li key={index}>{item}</li>
-              ))}
-            </ul>
-          </div>
+        <DialogBody className="h-auto overflow-y-auto px-0">
+          {selectedTutorial && (
+            <div className="space-y-4">
+              <div className="relative w-full overflow-hidden rounded-lg">
+                <video
+                  src={selectedTutorial.videoUrl}
+                  controls
+                  autoPlay
+                  className="h-auto w-full rounded-md shadow"
+                />
+              </div>
+
+              <div className="space-y-4 p-4">
+                <div>
+                  <Typography
+                    variant="h6"
+                    className="mb-2 text-blue-700"
+                  >
+                    Tutorial Notes:
+                  </Typography>
+                  <Typography className="text-gray-700">
+                    {selectedTutorial.notes}
+                  </Typography>
+                </div>
+
+                <div>
+                  <Typography
+                    variant="h6"
+                    className="mb-2 text-blue-700"
+                  >
+                    Checklist:
+                  </Typography>
+                  <ul className="list-inside list-decimal space-y-1">
+                    {selectedTutorial.checklist.map((item, index) => (
+                      <li key={index} className="text-gray-700">
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
         </DialogBody>
         <DialogFooter>
-          <Button variant="text" color="red" onClick={handleCloseDialog}>
+          <Button onClick={handleCloseDialog} color="red">
             Close
           </Button>
         </DialogFooter>
