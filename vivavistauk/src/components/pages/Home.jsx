@@ -6,7 +6,6 @@ import {
   FaBuildingColumns,
 } from "react-icons/fa6";
 import { motion } from "framer-motion";
-import HomeSearchComponent from "../elements/HomeSearchComponent";
 import { CarouselCustomNavigation } from "../elements/CarouselCustomNavigation";
 
 const Home = ({ homeslides }) => {

@@ -1,6 +1,5 @@
 // src/components/elements/index.js
 export { default as NewAddedCardComponent } from "./NewAddedCardComponent";
-export { default as HomeSearchComponent } from "./HomeSearchComponent";
 export { default as NewCardComponent } from "./NewCardComponent";
 export { default as ImageGallery } from "./ImageGallary";
 export { default as ImageGallery2 } from "./ImageGallary2";
