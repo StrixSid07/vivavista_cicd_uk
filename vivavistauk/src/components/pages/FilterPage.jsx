@@ -36,6 +36,7 @@ const FilterPage = () => {
   const leftCardRef = useRef(null);
   const [leftHeight, setLeftHeight] = useState("auto");
   const { setLeadPrice } = useContext(LeadContext);
+  const [lowDepositOpen, setLowDepositOpen] = useState(false);
 
   const renderStars = () => {
     const stars = [];
@@ -69,17 +70,17 @@ const FilterPage = () => {
   // Function to find the cheapest price and its airport
   const findCheapestPrice = (pricesArray) => {
     if (!pricesArray || pricesArray.length === 0) return null;
-    
+
     // Filter out any prices with priceswitch = true if needed
     const validPrices = pricesArray.filter(price => !price.priceswitch);
-    
+
     if (validPrices.length === 0) return null;
-    
+
     // Find the cheapest price
     const cheapestPrice = validPrices.reduce((cheapest, current) => {
       return current.price < cheapest.price ? current : cheapest;
     }, validPrices[0]);
-    
+
     console.log("Found cheapest price:", cheapestPrice);
     return cheapestPrice;
   };
@@ -175,7 +176,7 @@ const FilterPage = () => {
         if (cheapestPriceObj) {
           const formattedDate = new Date(cheapestPriceObj.startdate).toLocaleDateString("en-GB");
           console.log("Setting cheapest price:", cheapestPriceObj.price, "for date:", formattedDate);
-          
+
           // Handle different airport data structures
           let airportId;
           if (cheapestPriceObj.airport && typeof cheapestPriceObj.airport === 'object') {
@@ -187,7 +188,7 @@ const FilterPage = () => {
           } else {
             airportId = cheapestPriceObj.airport;
           }
-          
+
           setSelectedDate(formattedDate);
           setSelectedAirport(airportId);
           setLeadPrice(cheapestPriceObj.price);
@@ -350,18 +351,56 @@ const FilterPage = () => {
               </div>
             </div>
           </div>
+          {/* for mobile view */}
           {tripData.LowDeposite && (
             <div
-              className="bg-white border border-blue-500 rounded-xl max-w-sm w-full md:h-[leftHeight] h-auto mx-auto mt-6 px-4 py-3 shadow-md relative flex flex-col"
+              className="bg-white border border-blue-500 rounded-xl max-w-sm w-full md:hidden md:h-[leftHeight] h-auto mx-auto mt-6 px-4 py-3 shadow-md relative flex flex-col"
               style={{ height: leftHeight }}
             >
-              <h2 className="text-md font-semibold -mt-1 text-black">
+              <h2 className="text-md font-semibold -mt-1 text-blue-500">
                 Low Deposit
               </h2>
+              <hr className="border-1 border-blue-500" />
               <div className="overflow-y-auto pr-2" style={{ flex: 1 }}>
                 {tripData.LowDeposite}
               </div>
             </div>
+          )}
+          {/* for pc view */}
+          {tripData.LowDeposite && (
+            <>
+              <button
+                onClick={() => setLowDepositOpen(true)}
+                className="bg-white border border-blue-500 rounded-xl max-w-sm w-full md:flex hidden items-center justify-center mx-auto mt-6 px-4 py-3 shadow-md hover:bg-blue-50 transition-colors"
+                style={{ height: "fit-content" }}
+              >
+                <span className="text-md font-semibold text-blue-500">
+                  Low Deposit
+                </span>
+              </button>
+              
+              {/* Low Deposit Popup */}
+              {lowDepositOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                  <div className="relative bg-white rounded-xl max-w-lg w-full p-6 shadow-lg">
+                    <div className="flex justify-between items-center mb-4">
+                      <h2 className="text-xl font-semibold text-blue-500">Low Deposit</h2>
+                      <button 
+                        onClick={() => setLowDepositOpen(false)}
+                        className="text-gray-500 hover:text-gray-800"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="overflow-y-auto max-h-96">
+                      {tripData.LowDeposite}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
