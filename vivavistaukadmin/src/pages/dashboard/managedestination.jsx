@@ -28,6 +28,9 @@ export function ManageDestination() {
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [destinationName, setDestinationName] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [buttonDisabled, setButtonDisabled] = useState(false);
+  const [deleteInProgress, setDeleteInProgress] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -38,6 +41,7 @@ export function ManageDestination() {
 
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState({ message: "", type: "" });
+  const [imageError, setImageError] = useState("");
 
   useEffect(() => {
     fetchDestinations();
@@ -47,7 +51,6 @@ export function ManageDestination() {
     try {
       const response = await axios.get("/destinations/destinations");
       setDestinations(response.data);
-      console.log(response.data);
     } catch (error) {
       console.error("Error fetching destinations:", error);
       setAlert({ message: "Error fetching destinations", type: "red" });
@@ -85,7 +88,32 @@ export function ManageDestination() {
     }
   };
 
+  // Helper function for validating image
+  const validateImage = (file) => {
+    // Check file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    if (!allowedTypes.includes(file.type)) {
+      setImageError("Only JPG, JPEG, and PNG files are allowed");
+      return false;
+    }
+    
+    // Check file size (5MB limit)
+    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+    if (file.size > maxSize) {
+      setImageError("Image size must be less than 5MB");
+      return false;
+    }
+    
+    setImageError("");
+    return true;
+  };
+
   const handleOpenDialog = (destination = null) => {
+    if (buttonDisabled) return;
+    
+    setButtonDisabled(true);
+    setTimeout(() => setButtonDisabled(false), 500); // Prevent double-clicks for 500ms
+    
     setCurrentDestination(destination);
     setFormData(
       destination
@@ -102,7 +130,7 @@ export function ManageDestination() {
             imagePreview: "",
           },
     );
-
+    setImageError("");
     setOpenDialog(true);
   };
 
@@ -110,10 +138,34 @@ export function ManageDestination() {
     setOpenDialog(false);
     setCurrentDestination(null);
     setAlert({ message: "", type: "" });
+    setIsSubmitting(false);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Prevent duplicate submissions
+    if (isSubmitting) return;
+    
+    // Validate required fields
+    if (!formData.name) {
+      setAlert({ message: "Destination name is required", type: "red" });
+      return;
+    }
+    
+    // For new destinations, image is required
+    if (!currentDestination && !formData.imageFile) {
+      setAlert({ message: "Image is required for new destinations", type: "red" });
+      return;
+    }
+    
+    // If there's an image error, don't proceed
+    if (imageError) {
+      setAlert({ message: imageError, type: "red" });
+      return;
+    }
+    
+    setIsSubmitting(true);
     setLoading(true);
 
     try {
@@ -146,17 +198,26 @@ export function ManageDestination() {
       setAlert({ message: "Error saving destination", type: "red" });
     } finally {
       setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   const confirmDelete = (id, name) => {
+    if (buttonDisabled) return;
+    
+    setButtonDisabled(true);
+    setTimeout(() => setButtonDisabled(false), 500); // Prevent double-clicks for 500ms
+    
     setDeleteId(id);
     setDestinationName(name);
     setOpenDeleteDialog(true);
   };
 
   const handleDelete = async (id) => {
+    if (deleteInProgress) return;
+    
     try {
+      setDeleteInProgress(true);
       await axios.delete(`/destinations/${id}`);
       setAlert({
         message: "Destination deleted successfully!",
@@ -169,6 +230,7 @@ export function ManageDestination() {
     } finally {
       setOpenDeleteDialog(false);
       setDeleteId(null);
+      setDeleteInProgress(false);
     }
   };
 
@@ -185,7 +247,11 @@ export function ManageDestination() {
       )}
 
       <div className="mb-4 flex justify-end">
-        <Button onClick={() => handleOpenDialog()} color="blue">
+        <Button 
+          onClick={() => handleOpenDialog()} 
+          color="blue"
+          disabled={buttonDisabled}
+        >
           Add Destination
         </Button>
       </div>
@@ -245,6 +311,7 @@ export function ManageDestination() {
                       color="green"
                       onClick={() => handleOpenDialog(destination)}
                       className="p-2"
+                      disabled={buttonDisabled}
                     >
                       <PencilSquareIcon className="h-5 w-5" />
                     </Button>
@@ -266,6 +333,7 @@ export function ManageDestination() {
                         confirmDelete(destination._id, destination.name)
                       }
                       className="p-2"
+                      disabled={buttonDisabled}
                     >
                       <TrashIcon className="h-5 w-5" />
                     </Button>
@@ -299,28 +367,37 @@ export function ManageDestination() {
                 setFormData({ ...formData, name: e.target.value })
               }
               required
+              disabled={isSubmitting}
             />
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
                 Upload Image
               </label>
+              <div className="mb-1 text-xs text-blue-600">
+                Only JPG, JPEG, PNG formats allowed. Maximum size: 5MB.
+              </div>
               <input
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/jpg,image/png"
                 onChange={(e) => {
                   const file = e.target.files[0];
                   if (file) {
-                    setFormData({
-                      ...formData,
-                      imageFile: file,
-                      imagePreview: URL.createObjectURL(file),
-                    });
+                    if (validateImage(file)) {
+                      setFormData({
+                        ...formData,
+                        imageFile: file,
+                        imagePreview: URL.createObjectURL(file),
+                      });
+                    }
                   }
                 }}
                 required={!currentDestination} // Required only for adding new
-                disabled={currentDestination?.image && !formData.imageFile}
+                disabled={isSubmitting || (currentDestination?.image && !formData.imageFile)}
                 className="block w-full text-sm text-gray-900 file:mr-4 file:rounded-md file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-blue-600 hover:file:bg-blue-100"
               />
+              {imageError && (
+                <div className="mt-1 text-sm text-red-500">{imageError}</div>
+              )}
             </div>
 
             {formData.imagePreview && (
@@ -336,6 +413,7 @@ export function ManageDestination() {
                     type="button"
                     onClick={handleDeleteImage}
                     className="absolute right-0 top-0 rounded-full bg-blue-100 p-1 text-white hover:bg-red-100"
+                    disabled={isSubmitting}
                   >
                     ❌
                   </button>
@@ -350,16 +428,26 @@ export function ManageDestination() {
                   setFormData({ ...formData, isPopular: e.target.checked })
                 }
                 color="blue"
+                disabled={isSubmitting}
               />
               Is Popular Destination
             </label>
           </form>
         </DialogBody>
         <DialogFooter>
-          <Button onClick={handleCloseDialog} color="red" variant="text">
+          <Button 
+            onClick={handleCloseDialog} 
+            color="red" 
+            variant="text"
+            disabled={isSubmitting}
+          >
             Cancel
           </Button>
-          <Button onClick={handleSubmit} color="green" disabled={loading}>
+          <Button 
+            onClick={handleSubmit} 
+            color="green" 
+            disabled={loading || isSubmitting}
+          >
             {loading ? "Saving..." : "Save"}
           </Button>
         </DialogFooter>
@@ -390,6 +478,7 @@ export function ManageDestination() {
             color="gray"
             onClick={() => setOpenDeleteDialog(false)}
             className="mr-1"
+            disabled={deleteInProgress}
           >
             Cancel
           </Button>
@@ -397,8 +486,9 @@ export function ManageDestination() {
             variant="gradient"
             color="red"
             onClick={() => handleDelete(deleteId)}
+            disabled={deleteInProgress}
           >
-            Delete
+            {deleteInProgress ? "Deleting..." : "Delete"}
           </Button>
         </DialogFooter>
       </Dialog>

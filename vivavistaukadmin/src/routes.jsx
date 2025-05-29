@@ -24,7 +24,7 @@ import {
   ManageTerms,
   ManageDeals,
   ManageCarousel,
-  ManageHolidayCategories,
+  ManageHolidayCategorie,
   ManageBlog,
   ManageBooking,
   ManageBoardBasis,
@@ -71,7 +71,7 @@ export const routes = [
         icon: <TagIcon {...icon} />,
         name: "Manage H Categories",
         path: "/Manage-holiday-categories",
-        element: <ManageHolidayCategories />,
+        element: <ManageHolidayCategorie />,
       },
       {
         icon: <StopCircleIcon {...icon} />,
