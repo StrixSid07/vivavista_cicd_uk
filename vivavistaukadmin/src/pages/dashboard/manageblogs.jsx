@@ -40,6 +40,7 @@ export function ManageBlog() {
 
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState({ message: "", type: "" });
+  const [imageError, setImageError] = useState("");
 
   useEffect(() => {
     fetchblogs();
@@ -53,6 +54,26 @@ export function ManageBlog() {
       console.error("Error fetching blogs:", error);
       setAlert({ message: "Error fetching blogs", type: "red" });
     }
+  };
+
+  // Helper function for validating image
+  const validateImage = (file) => {
+    // Check file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    if (!allowedTypes.includes(file.type)) {
+      setImageError("Only JPG, JPEG, and PNG files are allowed");
+      return false;
+    }
+    
+    // Check file size (5MB limit)
+    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+    if (file.size > maxSize) {
+      setImageError("Image size must be less than 5MB");
+      return false;
+    }
+    
+    setImageError("");
+    return true;
   };
 
   const handleImageClick = (imageUrl) => {
@@ -103,7 +124,7 @@ export function ManageBlog() {
             imagePreview: "",
           },
     );
-
+    setImageError("");
     setOpenDialog(true);
   };
 
@@ -116,6 +137,13 @@ export function ManageBlog() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+
+    // If there's an image error, don't proceed
+    if (imageError) {
+      setAlert({ message: imageError, type: "red" });
+      setLoading(false);
+      return;
+    }
 
     try {
       const data = new FormData();
@@ -293,25 +321,32 @@ export function ManageBlog() {
 
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
-                Upload Image
+                Upload Image (JPG, JPEG, PNG only, max 5MB)
               </label>
               <input
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/jpg,image/png"
                 onChange={(e) => {
                   const file = e.target.files[0];
                   if (file) {
-                    setFormData({
-                      ...formData,
-                      imageFile: file,
-                      imagePreview: URL.createObjectURL(file),
-                    });
+                    if (validateImage(file)) {
+                      setFormData({
+                        ...formData,
+                        imageFile: file,
+                        imagePreview: URL.createObjectURL(file),
+                      });
+                    } else {
+                      e.target.value = null; // Reset the input
+                    }
                   }
                 }}
                 required={!currentblog}
                 disabled={currentblog?.image && !formData.imageFile}
                 className="block w-full text-sm text-gray-900 file:mr-4 file:rounded-md file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-blue-600 hover:file:bg-blue-100"
               />
+              {imageError && (
+                <p className="mt-1 text-sm text-red-500">{imageError}</p>
+              )}
             </div>
 
             {formData.imagePreview && (

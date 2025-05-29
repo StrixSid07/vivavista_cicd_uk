@@ -24,6 +24,7 @@ export function ManageCarousel() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [buttonDisabled, setButtonDisabled] = useState(false);
   const [deleteInProgress, setDeleteInProgress] = useState(false);
+  const [imageError, setImageError] = useState("");
 
   useEffect(() => {
     fetchCarousels();
@@ -48,6 +49,26 @@ export function ManageCarousel() {
     }
   };
 
+  // Helper function for validating image
+  const validateImage = (file) => {
+    // Check file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    if (!allowedTypes.includes(file.type)) {
+      setImageError("Only JPG, JPEG, and PNG files are allowed");
+      return false;
+    }
+    
+    // Check file size (5MB limit)
+    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+    if (file.size > maxSize) {
+      setImageError("Image size must be less than 5MB");
+      return false;
+    }
+    
+    setImageError("");
+    return true;
+  };
+
   const handleOpenDialog = (carousel = null) => {
     if (buttonDisabled) return;
     
@@ -56,6 +77,7 @@ export function ManageCarousel() {
     
     setCurrentCarousel(carousel);
     setFormData(carousel ? { images: carousel.images } : { images: [] });
+    setImageError("");
     setOpenDialog(true);
   };
 
@@ -71,6 +93,12 @@ export function ManageCarousel() {
     
     // Prevent duplicate submissions
     if (isSubmitting) return;
+    
+    // If there's an image error, don't proceed
+    if (imageError) {
+      setAlert({ message: imageError, type: "red" });
+      return;
+    }
     
     setIsSubmitting(true);
     setLoading(true);
@@ -199,16 +227,32 @@ export function ManageCarousel() {
         </DialogHeader>
         <DialogBody>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <input
-              type="file"
-              accept="image/*"
-              multiple={false}
-              onChange={
-                (e) => setFormData({ images: [e.target.files[0]] }) // store single image in array
-              }
-              required
-              disabled={isSubmitting}
-            />
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Upload Image (JPG, JPEG, PNG only, max 5MB)
+              </label>
+              <input
+                type="file"
+                accept="image/jpeg,image/jpg,image/png"
+                multiple={false}
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    if (validateImage(file)) {
+                      setFormData({ images: [file] });
+                    } else {
+                      e.target.value = null; // Reset the input
+                    }
+                  }
+                }}
+                required
+                disabled={isSubmitting}
+                className="block w-full text-sm text-gray-900 file:mr-4 file:rounded-md file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-blue-600 hover:file:bg-blue-100"
+              />
+              {imageError && (
+                <p className="mt-1 text-sm text-red-500">{imageError}</p>
+              )}
+            </div>
           </form>
         </DialogBody>
         <DialogFooter>
