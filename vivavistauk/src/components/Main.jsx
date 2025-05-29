@@ -8,15 +8,10 @@ import {
 } from "react-router-dom";
 import { useMediaQuery } from "react-responsive";
 import {
-  ForSale,
   Blogs,
   ContactUs,
-  WhyUs,
   Services,
   AboutUs,
-  WhatWeDo,
-  HowWeWork,
-  DetailedView,
   BlogDetail,
   FaqsAccordion,
   PrivacyPolicy,
@@ -100,12 +95,7 @@ const Main = () => {
             <Route path="/asia" element={<MainScreen />} />
             <Route path="/caribbean" element={<MainScreen />} />
             <Route path="/middleeast" element={<MainScreen />} />
-            <Route path="/Projects" element={<ForSale />} />
-            <Route path="/DetailedView" element={<DetailedView />} />
             <Route path="/OurServices" element={<Services />} />
-            <Route path="/WhyUs" element={<WhyUs />} />
-            <Route path="/WhatWeDo" element={<WhatWeDo />} />
-            <Route path="/HowWeWork" element={<HowWeWork />} />
             <Route path="/AboutUs" element={<AboutUs />} />
             <Route path="/faq" element={<FaqsAccordion />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
