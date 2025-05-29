@@ -103,11 +103,60 @@ const FilterElement = ({
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+  
+  // Update leadPrice when selectedDate and selectedAirport change
+  useEffect(() => {
+    if (selectedDate && selectedAirport && priceMap) {
+      // Find the price based on selected date and airport
+      const keys = Object.keys(priceMap).filter(k => {
+        const [dateStr, priceId] = k.split('_');
+        return dateStr === selectedDate;
+      });
+      
+      if (keys.length > 0) {
+        // Find the cheapest price among matching date keys
+        const cheapestKey = keys.reduce((cheapestKey, currentKey) => {
+          if (!cheapestKey) return currentKey;
+          return priceMap[currentKey].value < priceMap[cheapestKey].value 
+            ? currentKey 
+            : cheapestKey;
+        }, null);
+        
+        if (cheapestKey && priceMap[cheapestKey]) {
+          setLeadPrice(priceMap[cheapestKey].value);
+        }
+      }
+    }
+  }, [selectedDate, selectedAirport, priceMap, setLeadPrice]);
+
+  // Auto-select first airport if none is selected
   useEffect(() => {
     if (!selectedAirport && uniqueDepartureAirports.length > 0) {
       onAirportChange(uniqueDepartureAirports[0]._id); // Auto-select the first airport
     }
   }, [selectedAirport, uniqueDepartureAirports, onAirportChange]);
+  
+  // Handle airport change with price update
+  const handleAirportChange = (value) => {
+    onAirportChange(value);
+    
+    // Find the cheapest price for this airport
+    if (priceMap) {
+      const airportPrices = Object.entries(priceMap)
+        .filter(([key, priceData]) => {
+          // Filter prices for this airport that are not priceswitch
+          return !priceData.priceswitch;
+        })
+        .map(([key, priceData]) => priceData.value);
+      
+      if (airportPrices.length > 0) {
+        // Find minimum price
+        const minPrice = Math.min(...airportPrices);
+        setLeadPrice(minPrice);
+      }
+    }
+  };
+
   return (
     <Card className="w-full max-w-md border border-gray-100 shadow-lg p-1 group">
       {/* Header: Price */}
@@ -173,24 +222,12 @@ const FilterElement = ({
           >
             Departure Airport
           </Typography>
-          {/* <Select
-            label="Select Airport"
-            size="md"
-            value={selectedAirport}
-            onChange={(value) => setSelectedAirport(value)}
-          >
-            {departureAirports.map((airport, idx) => (
-              <Option key={idx} value={airport}>
-                {airport}
-              </Option>
-            ))}
-          </Select> */}
           <Select
             label="Select Airport"
             size="md"
             value={selectedAirport}
             className="customfontstitle"
-            onChange={(value) => onAirportChange(value)}
+            onChange={handleAirportChange}
           >
             {uniqueDepartureAirports.map((airport, idx) => (
               <Option key={airport._id} value={airport._id}>

@@ -35,6 +35,7 @@ const FilterPage = () => {
   const [selectedAirport, setSelectedAirport] = useState("");
   const leftCardRef = useRef(null);
   const [leftHeight, setLeftHeight] = useState("auto");
+  const { setLeadPrice } = useContext(LeadContext);
 
   const renderStars = () => {
     const stars = [];
@@ -64,6 +65,24 @@ const FilterPage = () => {
     departureAirports: [],
 
   });
+
+  // Function to find the cheapest price and its airport
+  const findCheapestPrice = (pricesArray) => {
+    if (!pricesArray || pricesArray.length === 0) return null;
+    
+    // Filter out any prices with priceswitch = true if needed
+    const validPrices = pricesArray.filter(price => !price.priceswitch);
+    
+    if (validPrices.length === 0) return null;
+    
+    // Find the cheapest price
+    const cheapestPrice = validPrices.reduce((cheapest, current) => {
+      return current.price < cheapest.price ? current : cheapest;
+    }, validPrices[0]);
+    
+    console.log("Found cheapest price:", cheapestPrice);
+    return cheapestPrice;
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -146,9 +165,32 @@ const FilterPage = () => {
           setWhatsIncluded(data.whatsIncluded);
         }
 
-        // Set itinerary if exists (note: your key is "iternatiy", so if that’s intentional, use that)
+        // Set itinerary if exists (note: your key is "iternatiy", so if that's intentional, use that)
         if (data.itinerary && Array.isArray(data.itinerary)) {
           setItinerary(data.itinerary);
+        }
+
+        // Find the cheapest price
+        const cheapestPriceObj = findCheapestPrice(data.prices);
+        if (cheapestPriceObj) {
+          const formattedDate = new Date(cheapestPriceObj.startdate).toLocaleDateString("en-GB");
+          console.log("Setting cheapest price:", cheapestPriceObj.price, "for date:", formattedDate);
+          
+          // Handle different airport data structures
+          let airportId;
+          if (cheapestPriceObj.airport && typeof cheapestPriceObj.airport === 'object') {
+            airportId = cheapestPriceObj.airport._id;
+          } else if (Array.isArray(cheapestPriceObj.airport) && cheapestPriceObj.airport.length > 0) {
+            // If airport is an array, use the first one
+            const firstAirport = cheapestPriceObj.airport[0];
+            airportId = typeof firstAirport === 'object' ? firstAirport._id : firstAirport;
+          } else {
+            airportId = cheapestPriceObj.airport;
+          }
+          
+          setSelectedDate(formattedDate);
+          setSelectedAirport(airportId);
+          setLeadPrice(cheapestPriceObj.price);
         }
 
         setLoading(false);
@@ -158,20 +200,7 @@ const FilterPage = () => {
         alert("This deal is no longer available."); // Show an alert
         navigate("/"); // Redirect to home page
       });
-  }, [id, navigate]);
-
-  useEffect(() => {
-    if (prices.length && !selectedDate && !selectedAirport) {
-      // grab the very first price object
-      const first = prices[0];
-      // format the date the same way you do for your <Select>
-      const formattedDate = new Date(first.startdate).toLocaleDateString(
-        "en-GB"
-      );
-      setSelectedDate(formattedDate);
-      setSelectedAirport(first.airport);
-    }
-  }, [prices, selectedDate, selectedAirport]);
+  }, [id, navigate, setLeadPrice]);
 
   useEffect(() => {
     const updateHeight = () => {
