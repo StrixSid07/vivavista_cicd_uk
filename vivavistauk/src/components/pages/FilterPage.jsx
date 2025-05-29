@@ -252,7 +252,7 @@ const FilterPage = () => {
           >
             {/* Top Deal Badge */}
             {tripData.isTopDeal && (
-              <div className="absolute top-0 right-0 -mt-4 -mr-4 md:mt-0 md:mr-0 bg-yellow-400 text-sm font-semibold text-black px-3 py-1 rounded-tr-xl rounded-bl-xl flex items-center gap-1 shadow">
+              <div className="absolute top-0 right-0 md:mt-0 md:mr-0 bg-yellow-400 text-sm font-semibold text-black px-3 py-1 rounded-tr-xl rounded-bl-xl flex items-center gap-1 shadow">
                 <Sparkles className="w-4 h-4" />
                 Top Deal
               </div>
@@ -260,7 +260,7 @@ const FilterPage = () => {
 
             {/* Top Deal Badge */}
             {tripData.isHotdeal && (
-              <div className="absolute top-0 right-0 -mt-4 -mr-4 md:mt-0 md:mr-0 shadow-md bg-orange-400 text-sm font-semibold text-black px-4 py-1 rounded-bl-xl rounded-tr-xl flex items-center gap-2">
+              <div className="absolute top-0 right-0 md:mt-0 md:mr-0 shadow-md bg-orange-400 text-sm font-semibold text-black px-4 py-1 rounded-bl-xl rounded-tr-xl flex items-center gap-2">
                 <Flame className="w-5 h-5" />
                 Hot Deal
               </div>
@@ -352,10 +352,10 @@ const FilterPage = () => {
           </div>
           {tripData.LowDeposite && (
             <div
-              className="bg-white border rounded-xl max-w-sm w-full md:h-[leftHeight] h-auto mx-auto mt-6 px-4 py-3 shadow-md relative flex flex-col"
+              className="bg-white border border-blue-500 rounded-xl max-w-sm w-full md:h-[leftHeight] h-auto mx-auto mt-6 px-4 py-3 shadow-md relative flex flex-col"
               style={{ height: leftHeight }}
             >
-              <h2 className="text-md font-semibold text-gray-800">
+              <h2 className="text-md font-semibold -mt-1 text-black">
                 Low Deposit
               </h2>
               <div className="overflow-y-auto pr-2" style={{ flex: 1 }}>
