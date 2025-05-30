@@ -166,82 +166,113 @@ const FilterElement = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prices]); // Run when prices are loaded
 
-  // Handle price updates when date or airport changes (but prevent flickering)
+  // Update price when either selectedDate or selectedAirport changes
   useEffect(() => {
-    // Skip if prices not loaded yet
-    if (!prices || prices.length === 0) return;
+    if (!selectedDate || !selectedAirport || !prices || prices.length === 0) {
+      return;
+    }
     
-    // Skip if no date or airport is selected yet (will be handled by initial price setting)
-    if (!selectedDate || !selectedAirport) return;
+    console.log("Price update effect triggered with:", {
+      date: selectedDate,
+      airport: selectedAirport
+    });
     
-    // Function to find the cheapest price for a given airport and date
-    const findPriceForAirportAndDate = (airportId, dateStr) => {
-      // Find prices matching this airport and date
-      const matchingPrices = prices.filter(price => {
-        // Match date
-        const priceDate = new Date(price.startdate).toLocaleDateString("en-GB");
-        if (priceDate !== dateStr) return false;
-        
-        // Match airport
-        let hasSelectedAirport = false;
-        if (Array.isArray(price.airport)) {
-          hasSelectedAirport = price.airport.some(airport => 
-            (typeof airport === 'object' && airport._id === airportId) || airport === airportId
-          );
-        } else if (typeof price.airport === 'object' && price.airport) {
-          hasSelectedAirport = price.airport._id === airportId;
-        } else {
-          hasSelectedAirport = price.airport === airportId;
-        }
-        
-        // Filter out inactive prices
-        return hasSelectedAirport && !price.priceswitch;
-      });
+    // Find the specific prices for this date and airport
+    const matchingPrices = prices.filter(price => {
+      // Match date
+      const priceDate = new Date(price.startdate).toLocaleDateString("en-GB");
+      if (priceDate !== selectedDate) return false;
       
-      // Return the cheapest price from matches
-      if (matchingPrices.length > 0) {
-        return matchingPrices.reduce((min, price) => 
-          price.price < min.price ? price : min, matchingPrices[0]).price;
+      // Match airport - handle different possible structures
+      let hasSelectedAirport = false;
+      if (Array.isArray(price.airport)) {
+        hasSelectedAirport = price.airport.some(airport => 
+          (typeof airport === 'object' && airport._id === selectedAirport) || 
+          airport === selectedAirport
+        );
+      } else if (typeof price.airport === 'object' && price.airport) {
+        hasSelectedAirport = price.airport._id === selectedAirport;
+      } else {
+        hasSelectedAirport = price.airport === selectedAirport;
       }
       
-      // If no match for this airport, find cheapest price for this date
+      // Filter out inactive prices
+      return hasSelectedAirport && !price.priceswitch;
+    });
+    
+    if (matchingPrices.length > 0) {
+      // Use the cheapest price for this date and airport
+      const cheapestPrice = matchingPrices.reduce((min, price) => 
+        price.price < min.price ? price : min, matchingPrices[0]);
+      
+      console.log("Found price for selected criteria:", cheapestPrice.price);
+      setLeadPrice(cheapestPrice.price);
+      
+      // Force an additional update after a small delay to ensure the UI updates
+      setTimeout(() => {
+        setLeadPrice(prev => prev);
+      }, 100);
+    } else {
+      // If no price for the specific airport and date, find any price for this date
+      console.log("No price found for exact criteria, looking for fallback");
       const dateFilteredPrices = prices.filter(price => {
         const priceDate = new Date(price.startdate).toLocaleDateString("en-GB");
-        return priceDate === dateStr && !price.priceswitch;
+        return priceDate === selectedDate && !price.priceswitch;
       });
       
       if (dateFilteredPrices.length > 0) {
-        return dateFilteredPrices.reduce((min, price) => 
-          price.price < min.price ? price : min, dateFilteredPrices[0]).price;
+        const cheapestDatePrice = dateFilteredPrices.reduce((min, price) => 
+          price.price < min.price ? price : min, dateFilteredPrices[0]);
+        
+        console.log("Setting fallback price:", cheapestDatePrice.price);
+        setLeadPrice(cheapestDatePrice.price);
+        
+        // Force UI update
+        setTimeout(() => {
+          setLeadPrice(prev => prev);
+        }, 100);
       }
-      
-      return null;
-    };
-    
-    // Find price for the selected airport and date
-    const newPrice = findPriceForAirportAndDate(selectedAirport, selectedDate);
-    
-    // Update lead price if we found a valid price
-    if (newPrice !== null) {
-      console.log("Updating price for selected airport/date:", newPrice);
-      setLeadPrice(newPrice);
     }
+    
+    // Create a recurring check to ensure price stays correct when component is visible
+    const visibilityCheck = setInterval(() => {
+      const element = document.querySelector('.filter-element-card');
+      if (element && isElementInViewport(element)) {
+        console.log("Filter element is visible, reinforcing price update");
+        setLeadPrice(prev => prev); // Force a re-render with the same value
+      }
+    }, 1000);
+    
+    return () => clearInterval(visibilityCheck);
   }, [selectedDate, selectedAirport, prices, setLeadPrice]);
   
-  // Custom airport change handler to prevent price flickering
+  // Helper function to check if an element is in the viewport
+  const isElementInViewport = (el) => {
+    const rect = el.getBoundingClientRect();
+    return (
+      rect.top >= 0 &&
+      rect.left >= 0 &&
+      rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+      rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+    );
+  };
+
+  // Custom airport change handler to immediately update price when airport changes
   const handleAirportChange = (value) => {
-    // Update the selected airport
+    console.log("Airport changed to:", value);
+    
+    // First update the selected airport
     onAirportChange(value);
     
-    // Immediately update price for the selected airport if we have a date
+    // Force immediate price update for this airport
     if (selectedDate && prices && prices.length > 0) {
-      // Find the prices for this specific airport and date
+      // Find prices specifically for this airport and date
       const airportPrices = prices.filter(price => {
-        // Check if price is for the selected date
+        // Match date
         const priceDate = new Date(price.startdate).toLocaleDateString("en-GB");
         if (priceDate !== selectedDate) return false;
         
-        // Check if price is for the selected airport
+        // Match airport - handle different data structures
         let hasSelectedAirport = false;
         if (Array.isArray(price.airport)) {
           hasSelectedAirport = price.airport.some(airport => 
@@ -258,18 +289,89 @@ const FilterElement = ({
       });
       
       if (airportPrices.length > 0) {
-        // If we found prices for this airport, use the cheapest one
+        // Find the cheapest price for this airport
         const cheapestPrice = airportPrices.reduce((min, price) => 
           price.price < min.price ? price : min, airportPrices[0]);
         
-        console.log("Airport change - setting price:", cheapestPrice.price);
+        console.log("Setting price for selected airport:", cheapestPrice.price);
+        
+        // Update the price with a small delay to ensure the DOM has updated
         setLeadPrice(cheapestPrice.price);
+        
+        // Force a re-render by updating the state again with the same value after a small delay
+        setTimeout(() => {
+          setLeadPrice(prev => {
+            console.log("Reinforcing price update:", prev);
+            return prev;
+          });
+        }, 50);
+      } else {
+        console.log("No prices found for selected airport and date");
+        
+        // If no price found for this specific airport, use any price for this date
+        const dateFilteredPrices = prices.filter(price => {
+          const priceDate = new Date(price.startdate).toLocaleDateString("en-GB");
+          return priceDate === selectedDate && !price.priceswitch;
+        });
+        
+        if (dateFilteredPrices.length > 0) {
+          const cheapestDatePrice = dateFilteredPrices.reduce((min, price) => 
+            price.price < min.price ? price : min, dateFilteredPrices[0]);
+          
+          console.log("Setting fallback price:", cheapestDatePrice.price);
+          setLeadPrice(cheapestDatePrice.price);
+          
+          // Force re-render
+          setTimeout(() => {
+            setLeadPrice(prev => prev);
+          }, 50);
+        }
       }
     }
   };
 
+  // Add a MutationObserver to ensure price updates are reflected in the DOM
+  useEffect(() => {
+    // Create a reference to the price display element
+    const priceDisplay = document.querySelector('.price-display');
+    if (!priceDisplay) return;
+    
+    console.log("Setting up MutationObserver for price display");
+    
+    // Create a MutationObserver to watch for changes to the price display
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'childList' || mutation.type === 'characterData') {
+          console.log("Price display changed:", priceDisplay.textContent);
+          
+          // Verify the price is correct
+          const displayedPrice = parseInt(priceDisplay.textContent.replace(/[^0-9]/g, ''), 10);
+          if (displayedPrice !== leadPrice) {
+            console.log("Price mismatch detected, forcing update", {
+              displayed: displayedPrice,
+              expected: leadPrice
+            });
+            
+            // Force an update
+            setTimeout(() => setLeadPrice(leadPrice), 50);
+          }
+        }
+      });
+    });
+    
+    // Start observing with all possible options
+    observer.observe(priceDisplay, {
+      childList: true,
+      characterData: true,
+      subtree: true
+    });
+    
+    // Clean up the observer when component unmounts
+    return () => observer.disconnect();
+  }, [leadPrice]);
+
   return (
-    <Card className="w-full max-w-md border border-gray-100 shadow-lg p-1 group">
+    <Card className="w-full max-w-md border border-gray-100 shadow-lg p-1 group filter-element-card">
       {/* Header: Price */}
       <CardHeader
         floated={false}
@@ -280,7 +382,7 @@ const FilterElement = ({
         </Typography>
         <Typography
           variant="h3"
-          className="font-bold leading-tight text-white customfontstitle"
+          className="font-bold leading-tight text-white customfontstitle price-display"
         >
           £{leadPrice}
         </Typography>
@@ -387,7 +489,7 @@ const FilterElement = ({
           </Typography>
           <Typography
             variant="h5"
-            className="font-bold tracking-wide bg-transparent bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-indigo-600 customfontstitle"
+            className="font-bold tracking-wide bg-transparent bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-indigo-600 customfontstitle total-price-display"
           >
             £{totalPrice}
           </Typography>
