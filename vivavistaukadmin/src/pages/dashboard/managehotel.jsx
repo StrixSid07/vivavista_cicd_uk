@@ -47,6 +47,35 @@ export function ManageHotel() {
   const [hotelName, setHotelName] = useState("");
   const [mode, setMode] = useState("manual");
   const [inputValue, setInputValue] = useState(formData.locationId || "");
+  const [imageError, setImageError] = useState("");
+
+  // Helper function for validating image
+  const validateImage = (file) => {
+    // Check file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    if (!allowedTypes.includes(file.type)) {
+      return "Only JPG, JPEG, and PNG files are allowed";
+    }
+    
+    // Check file size (5MB limit)
+    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+    if (file.size > maxSize) {
+      return "Image size must be less than 5MB";
+    }
+    
+    return "";
+  };
+
+  // Function to validate all images in a file list
+  const validateImages = (files) => {
+    for (let i = 0; i < files.length; i++) {
+      const error = validateImage(files[i]);
+      if (error) {
+        return error;
+      }
+    }
+    return "";
+  };
 
   useEffect(() => {
     setInputValue(formData.locationId || "");
@@ -149,6 +178,7 @@ export function ManageHotel() {
           },
     );
     setImageUrls(hotel ? hotel.images : [""]);
+    setImageError("");
     setOpenDialog(true);
   };
 
@@ -170,6 +200,13 @@ export function ManageHotel() {
   const [newImages, setNewImages] = useState([]);
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Check if there's an image error before proceeding
+    if (imageError) {
+      setAlert({ message: imageError, type: "red" });
+      return;
+    }
+    
     setLoading(true);
     try {
       console.log(formData);
@@ -494,23 +531,57 @@ export function ManageHotel() {
               </Card>
             )}
             {/* Image Upload */}
-            <Input
-              type="file"
-              multiple
-              onChange={(e) => {
-                const files = Array.from(e.target.files);
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Upload Images (JPG, JPEG, PNG only, max 5MB each, up to 5 images)
+              </label>
+              <Input
+                type="file"
+                multiple
+                accept="image/jpeg,image/jpg,image/png"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files);
 
-                if (
-                  files.length + newImages.length + formData.images.length >
-                  5
-                ) {
-                  alert("You can only upload up to 5 images.");
-                  e.target.value = ""; // reset the input
-                  return;
-                }
-                setNewImages((prevImages) => [...prevImages, ...files]);
-              }}
-            />
+                  // Check total number of images
+                  if (
+                    files.length + newImages.length + formData.images.length >
+                    5
+                  ) {
+                    setImageError("You can only upload up to 5 images.");
+                    e.target.value = ""; // reset the input
+                    return;
+                  }
+
+                  // Validate image formats and sizes
+                  const error = validateImages(files);
+                  if (error) {
+                    setImageError(error);
+                    e.target.value = ""; // reset the input
+                    return;
+                  }
+                  
+                  // Clear any previous errors
+                  setImageError("");
+                  setNewImages((prevImages) => [...prevImages, ...files]);
+                }}
+              />
+              {imageError && (
+                <div className="mt-2 flex items-center justify-between">
+                  <p className="text-sm text-red-500">{imageError}</p>
+                  <Button 
+                    size="sm" 
+                    color="red" 
+                    variant="text" 
+                    onClick={() => {
+                      setImageError("");
+                      setNewImages([]); // Clear only the new images
+                    }}
+                  >
+                    Clear Images
+                  </Button>
+                </div>
+              )}
+            </div>
           </form>
         </DialogBody>
         <DialogFooter>
