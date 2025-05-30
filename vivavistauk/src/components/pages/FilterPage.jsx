@@ -456,6 +456,7 @@ const FilterPage = () => {
             onDateChange={setSelectedDate}
             onAirportChange={setSelectedAirport}
             priceMap={priceMap}
+            prices={prices}
           />
         </div>
       </div>

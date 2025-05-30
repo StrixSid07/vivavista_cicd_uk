@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import {
   Card,
   CardHeader,
@@ -25,9 +25,9 @@ const FilterElement = ({
   dealtitle,
   departureDates, // Array of departure dates (strings)
   departureAirports, // Array of departure airports (strings)
-
+  prices, // Full price data array
   setSelectedTrip,
-  initialAdultCount = 1, // Optional initial count (default: 2)
+  initialAdultCount = 2, // Changed default to 2
   onBookingSubmit, // Callback function to handle submit
   selectedDate, // Rename here
   selectedAirport, // Rename here
@@ -52,6 +52,19 @@ const FilterElement = ({
     useContext(LeadContext);
   setDealIdForm(dealId);
   setDealtitleForm(dealtitle);
+  
+  // Use ref to track if initial adult count has been set
+  const initialAdultCountSet = useRef(false);
+
+  // Set initial adult count to 2 on component mount
+  useEffect(() => {
+    // Only run once and only if adultCount is less than 2
+    if (!initialAdultCountSet.current && adultCount < 2) {
+      setAdultCount(2);
+      initialAdultCountSet.current = true;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array means this runs once on mount
 
   // Flatten the departureAirports (if it's a nested array)
   const flatDepartureAirports = departureAirports.flat();
@@ -63,7 +76,8 @@ const FilterElement = ({
 
   console.log("THIS IS UNIQUE", uniqueDepartureAirports);
   const handleDecrement = () => {
-    setAdultCount((prev) => Math.max(1, prev - 1));
+    // Prevent reducing below 2
+    setAdultCount((prev) => Math.max(2, prev - 1));
   };
 
   // Increment traveler count
@@ -104,31 +118,6 @@ const FilterElement = ({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
   
-  // Update leadPrice when selectedDate and selectedAirport change
-  useEffect(() => {
-    if (selectedDate && selectedAirport && priceMap) {
-      // Find the price based on selected date and airport
-      const keys = Object.keys(priceMap).filter(k => {
-        const [dateStr, priceId] = k.split('_');
-        return dateStr === selectedDate;
-      });
-      
-      if (keys.length > 0) {
-        // Find the cheapest price among matching date keys
-        const cheapestKey = keys.reduce((cheapestKey, currentKey) => {
-          if (!cheapestKey) return currentKey;
-          return priceMap[currentKey].value < priceMap[cheapestKey].value 
-            ? currentKey 
-            : cheapestKey;
-        }, null);
-        
-        if (cheapestKey && priceMap[cheapestKey]) {
-          setLeadPrice(priceMap[cheapestKey].value);
-        }
-      }
-    }
-  }, [selectedDate, selectedAirport, priceMap, setLeadPrice]);
-
   // Auto-select first airport if none is selected
   useEffect(() => {
     if (!selectedAirport && uniqueDepartureAirports.length > 0) {
@@ -136,23 +125,145 @@ const FilterElement = ({
     }
   }, [selectedAirport, uniqueDepartureAirports, onAirportChange]);
   
-  // Handle airport change with price update
+  // Find and set the cheapest price on component mount (one-time initialization)
+  useEffect(() => {
+    // Only run if prices are available
+    if (prices && prices.length > 0) {
+      // Filter out prices with priceswitch=true
+      const validPrices = prices.filter(price => !price.priceswitch);
+      
+      if (validPrices.length > 0) {
+        // Find the cheapest price
+        const cheapestPrice = validPrices.reduce((cheapest, current) => {
+          return current.price < cheapest.price ? current : cheapest;
+        }, validPrices[0]);
+        
+        console.log("Setting initial cheapest price:", cheapestPrice.price);
+        
+        // Set the lead price to the cheapest price
+        setLeadPrice(cheapestPrice.price);
+        
+        // Also select the corresponding date and airport for consistency
+        const cheapestDate = new Date(cheapestPrice.startdate).toLocaleDateString("en-GB");
+        onDateChange(cheapestDate);
+        
+        // Find the first valid airport from the cheapest price
+        let airportId;
+        if (Array.isArray(cheapestPrice.airport) && cheapestPrice.airport.length > 0) {
+          const firstAirport = cheapestPrice.airport[0];
+          airportId = typeof firstAirport === 'object' ? firstAirport._id : firstAirport;
+        } else if (typeof cheapestPrice.airport === 'object' && cheapestPrice.airport) {
+          airportId = cheapestPrice.airport._id;
+        } else {
+          airportId = cheapestPrice.airport;
+        }
+        
+        if (airportId) {
+          onAirportChange(airportId);
+        }
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prices]); // Run when prices are loaded
+
+  // Handle price updates when date or airport changes (but prevent flickering)
+  useEffect(() => {
+    // Skip if prices not loaded yet
+    if (!prices || prices.length === 0) return;
+    
+    // Skip if no date or airport is selected yet (will be handled by initial price setting)
+    if (!selectedDate || !selectedAirport) return;
+    
+    // Function to find the cheapest price for a given airport and date
+    const findPriceForAirportAndDate = (airportId, dateStr) => {
+      // Find prices matching this airport and date
+      const matchingPrices = prices.filter(price => {
+        // Match date
+        const priceDate = new Date(price.startdate).toLocaleDateString("en-GB");
+        if (priceDate !== dateStr) return false;
+        
+        // Match airport
+        let hasSelectedAirport = false;
+        if (Array.isArray(price.airport)) {
+          hasSelectedAirport = price.airport.some(airport => 
+            (typeof airport === 'object' && airport._id === airportId) || airport === airportId
+          );
+        } else if (typeof price.airport === 'object' && price.airport) {
+          hasSelectedAirport = price.airport._id === airportId;
+        } else {
+          hasSelectedAirport = price.airport === airportId;
+        }
+        
+        // Filter out inactive prices
+        return hasSelectedAirport && !price.priceswitch;
+      });
+      
+      // Return the cheapest price from matches
+      if (matchingPrices.length > 0) {
+        return matchingPrices.reduce((min, price) => 
+          price.price < min.price ? price : min, matchingPrices[0]).price;
+      }
+      
+      // If no match for this airport, find cheapest price for this date
+      const dateFilteredPrices = prices.filter(price => {
+        const priceDate = new Date(price.startdate).toLocaleDateString("en-GB");
+        return priceDate === dateStr && !price.priceswitch;
+      });
+      
+      if (dateFilteredPrices.length > 0) {
+        return dateFilteredPrices.reduce((min, price) => 
+          price.price < min.price ? price : min, dateFilteredPrices[0]).price;
+      }
+      
+      return null;
+    };
+    
+    // Find price for the selected airport and date
+    const newPrice = findPriceForAirportAndDate(selectedAirport, selectedDate);
+    
+    // Update lead price if we found a valid price
+    if (newPrice !== null) {
+      console.log("Updating price for selected airport/date:", newPrice);
+      setLeadPrice(newPrice);
+    }
+  }, [selectedDate, selectedAirport, prices, setLeadPrice]);
+  
+  // Custom airport change handler to prevent price flickering
   const handleAirportChange = (value) => {
+    // Update the selected airport
     onAirportChange(value);
     
-    // Find the cheapest price for this airport
-    if (priceMap) {
-      const airportPrices = Object.entries(priceMap)
-        .filter(([key, priceData]) => {
-          // Filter prices for this airport that are not priceswitch
-          return !priceData.priceswitch;
-        })
-        .map(([key, priceData]) => priceData.value);
+    // Immediately update price for the selected airport if we have a date
+    if (selectedDate && prices && prices.length > 0) {
+      // Find the prices for this specific airport and date
+      const airportPrices = prices.filter(price => {
+        // Check if price is for the selected date
+        const priceDate = new Date(price.startdate).toLocaleDateString("en-GB");
+        if (priceDate !== selectedDate) return false;
+        
+        // Check if price is for the selected airport
+        let hasSelectedAirport = false;
+        if (Array.isArray(price.airport)) {
+          hasSelectedAirport = price.airport.some(airport => 
+            (typeof airport === 'object' && airport._id === value) || airport === value
+          );
+        } else if (typeof price.airport === 'object' && price.airport) {
+          hasSelectedAirport = price.airport._id === value;
+        } else {
+          hasSelectedAirport = price.airport === value;
+        }
+        
+        // Only include active prices
+        return hasSelectedAirport && !price.priceswitch;
+      });
       
       if (airportPrices.length > 0) {
-        // Find minimum price
-        const minPrice = Math.min(...airportPrices);
-        setLeadPrice(minPrice);
+        // If we found prices for this airport, use the cheapest one
+        const cheapestPrice = airportPrices.reduce((min, price) => 
+          price.price < min.price ? price : min, airportPrices[0]);
+        
+        console.log("Airport change - setting price:", cheapestPrice.price);
+        setLeadPrice(cheapestPrice.price);
       }
     }
   };
@@ -254,7 +365,7 @@ const FilterElement = ({
               -
             </button>
             <span className="flex-1 text-center font-medium customfontstitle">
-              {adultCount} {adultCount === 1 ? "Adult" : "Adults"}
+              {adultCount} Adults
             </span>
             <button
               type="button"
