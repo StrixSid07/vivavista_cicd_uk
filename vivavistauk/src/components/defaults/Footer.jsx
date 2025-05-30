@@ -110,10 +110,10 @@ const Footer = () => {
               </span>
               <span className="transition duration-700 ease-in-out hover:text-orange-600">
                 <a
-                  href="mailto:admin@vivavistavactions.co.uk"
+                  href="mailto:admin@vivavistavacations.co.uk"
                   className="block -mt-4 md:w-60 md:mt-0 overflow-hidden text-ellipsis md:whitespace-nowrap"
                 >
-                  admin@vivavistavactions.co.uk
+                  admin@vivavistavacations.co.uk
                 </a>
               </span>
             </li>

@@ -91,10 +91,10 @@ export default function FooterNew() {
                   />
                   {/* email link stays <a> */}
                   <a
-                    href="mailto:admin@vivavistavactions.co.uk"
+                    href="mailto:admin@vivavistavacations.co.uk"
                     className="text-white hover:text-orange-600 break-all"
                   >
-                    admin@vivavistavactions.co.uk
+                    admin@vivavistavacations.co.uk
                   </a>
                 </li>
 

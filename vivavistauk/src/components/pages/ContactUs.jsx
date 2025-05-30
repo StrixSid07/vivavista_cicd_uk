@@ -169,7 +169,7 @@ const ContactUs = () => {
                 <p className="text-base flex items-center justify-start gap-4 md:text-lg lg:text-xl transition duration-700 ease-in-out hover:text-deep-orange-500">
                   <FaEnvelope className="text-blue-600" size={24} />
                   <a href="mailto:support@gmail.com">
-                    admin@vivavistavactions.co.uk
+                    admin@vivavistavacations.co.uk
                   </a>
                 </p>
               </div>
