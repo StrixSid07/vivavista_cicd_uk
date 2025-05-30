@@ -7,11 +7,8 @@ const createHotel = async (req, res) => {
   try {
     const parsedData = JSON.parse(req.body.data);
     const { name, about, facilities, location, locationId, externalBookingLink, images } = parsedData;
-console.log(req.body);
-    if (!locationId) {
-      console.log("this id is require ");
-      return res.status(400).json({ message: "TripAdvisor `locationId` is required." });
-    }
+    console.log(req.body);
+    
     console.log("this is hotle",name);
      // Extract image URLs from the request
      let imageUrls = [];
@@ -46,20 +43,22 @@ console.log(req.body);
 
     res.status(201).json({ message: "Hotel added successfully. TripAdvisor data will be updated shortly.", hotel: newHotel });
 
-    // ✅ Fetch TripAdvisor data in the background
-    fetchTripAdvisorData(locationId).then(async (tripAdvisorData) => {
-      if (tripAdvisorData) {
-        await Hotel.findByIdAndUpdate(newHotel._id, {
-          tripAdvisorRating: tripAdvisorData.rating,
-          tripAdvisorReviews: tripAdvisorData.reviews,
-          tripAdvisorLatestReviews: tripAdvisorData.latestReviews,
-          tripAdvisorPhotos: tripAdvisorData.photos,
-          tripAdvisorLink: tripAdvisorData.link,
-        });
+    // ✅ Fetch TripAdvisor data in the background only if locationId is provided
+    if (locationId) {
+      fetchTripAdvisorData(locationId).then(async (tripAdvisorData) => {
+        if (tripAdvisorData) {
+          await Hotel.findByIdAndUpdate(newHotel._id, {
+            tripAdvisorRating: tripAdvisorData.rating,
+            tripAdvisorReviews: tripAdvisorData.reviews,
+            tripAdvisorLatestReviews: tripAdvisorData.latestReviews,
+            tripAdvisorPhotos: tripAdvisorData.photos,
+            tripAdvisorLink: tripAdvisorData.link,
+          });
 
-        console.log(`✅ TripAdvisor data updated for: ${name}`);
-      }
-    });
+          console.log(`✅ TripAdvisor data updated for: ${name}`);
+        }
+      });
+    }
   } catch (error) {
     console.log(error)
     res.status(500).json({ message: "Server error", error: error.message });
@@ -91,6 +90,10 @@ const getHotelById = async (req, res) => {
 // ✅ Update Hotel
 const updateHotel = async (req, res) => {
   try {
+    // Parse the JSON data from the request
+    const parsedData = JSON.parse(req.body.data);
+    const { locationId } = parsedData;
+    
     let newImageUrls = [];
 
     // Handle new uploaded images
@@ -113,7 +116,7 @@ const updateHotel = async (req, res) => {
 
     // Prepare updated data
     const updateData = {
-      ...req.body,
+      ...parsedData,
       images: updatedImageList
     };
 
@@ -121,6 +124,23 @@ const updateHotel = async (req, res) => {
     const updatedHotel = await Hotel.findByIdAndUpdate(req.params.id, updateData, { new: true });
 
     res.json({ message: "Hotel updated successfully", hotel: updatedHotel });
+    
+    // If locationId has changed and is not empty, update TripAdvisor data
+    if (locationId && locationId !== hotel.locationId) {
+      fetchTripAdvisorData(locationId).then(async (tripAdvisorData) => {
+        if (tripAdvisorData) {
+          await Hotel.findByIdAndUpdate(updatedHotel._id, {
+            tripAdvisorRating: tripAdvisorData.rating,
+            tripAdvisorReviews: tripAdvisorData.reviews,
+            tripAdvisorLatestReviews: tripAdvisorData.latestReviews,
+            tripAdvisorPhotos: tripAdvisorData.photos,
+            tripAdvisorLink: tripAdvisorData.link,
+          });
+          console.log(`✅ TripAdvisor data updated for: ${updatedHotel.name}`);
+        }
+      });
+    }
+    
   } catch (error) {
     console.error("Update Hotel Error:", error);
     res.status(500).json({ message: "Server error", error: error.message });

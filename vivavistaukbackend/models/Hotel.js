@@ -6,7 +6,7 @@ const HotelSchema = new mongoose.Schema(
     about: { type: String },
     facilities: [{ type: String }], // List of facilities
     location: { type: String, required: true },
-    locationId: { type: String, required: true, unique: true }, // TripAdvisor location ID
+    locationId: { type: String }, // TripAdvisor location ID - now optional
     rooms: [
       {
         numberofrooms: { type: Number, required: true }, // E.g., "Single", "Double", "Suite"

@@ -373,9 +373,9 @@ const FilterPage = () => {
                 onClick={() => setLowDepositOpen(true)}
                 className="bg-white border border-blue-500 rounded-xl max-w-sm w-full md:flex hidden items-center justify-center mx-auto mt-6 px-4 py-3 shadow-md hover:bg-blue-50 transition-colors"
                 style={{ height: "fit-content" }}
-              >
+            >
                 <span className="text-md font-semibold text-blue-500">
-                  Low Deposit
+                Low Deposit
                 </span>
               </button>
               
@@ -395,9 +395,9 @@ const FilterPage = () => {
                       </button>
                     </div>
                     <div className="overflow-y-auto max-h-96">
-                      {tripData.LowDeposite}
-                    </div>
-                  </div>
+                {tripData.LowDeposite}
+              </div>
+            </div>
                 </div>
               )}
             </>
