@@ -1,6 +1,7 @@
 const Booking = require("../models/Booking");
 const Deal = require("../models/Deal");
 const Airport = require("../models/Airport");
+const mongoose = require("mongoose");
 // ✅ Create a Booking (User or Guest)
 // const createBooking = async (req, res) => {
 //   try {
@@ -175,6 +176,7 @@ return (
   }
 };
 
+// ✅ Admin Create Booking
 const createBookingByAdmin = async (req, res) => {
   try {
     const {
@@ -188,20 +190,26 @@ const createBookingByAdmin = async (req, res) => {
       airport,
       adults,
       children = 0,
+      selectedPrice,
+      selectedHotel,
+      isManualEntry = false, // Check if this is a manual entry
     } = req.body;
 
-    // Find the deal by dealId and populate prices and hotels
-    const deal = await Deal.findById(dealId).populate({
-      path: "prices.hotel", // Ensure hotel is populated correctly
-      select: "name location", // Optional: specify the fields to populate
-    });
+    if (!dealId || !name || !email || !phone || !selectedDate || !airport) {
+      return res.status(400).json({
+        message: "Missing required fields",
+      });
+    }
 
+    // Find the deal
+    const deal = await Deal.findById(dealId);
     if (!deal) {
       return res.status(404).json({ message: "Deal not found" });
     }
 
     // Parse dates
     const parseDate = (dateStr) => {
+      if (!dateStr) return null;
       if (typeof dateStr === "string" && dateStr.includes("/")) {
         const [day, month, year] = dateStr.split("/");
         return new Date(`${year}-${month}-${day}`);
@@ -209,24 +217,92 @@ const createBookingByAdmin = async (req, res) => {
       return new Date(dateStr);
     };
 
+    // Only validate return date if not in manual mode or if it's provided
     const selectedDateObj = parseDate(selectedDate);
-    const returnDateObj = parseDate(returnDate);
-
-    if (isNaN(selectedDateObj) || isNaN(returnDateObj)) {
-      return res.status(400).json({ message: "Invalid date format" });
+    let returnDateObj = null;
+    
+    if (returnDate) {
+      returnDateObj = parseDate(returnDate);
+      if (returnDateObj && isNaN(returnDateObj.getTime())) {
+        return res.status(400).json({ message: "Invalid return date format" });
+      }
+    } else if (!isManualEntry) {
+      // Only require return date in automatic mode
+      return res.status(400).json({ message: "Return date is required in automatic mode" });
     }
 
-    // Find the selected price based on airport and selected date
-    const selectedPrice = deal.prices.find(
-      (price) =>
-        price.airport === airport.toUpperCase() &&
-        new Date(price.startdate).toISOString().split("T")[0] === selectedDate
-    );
+    if (isNaN(selectedDateObj.getTime())) {
+      return res.status(400).json({ message: "Invalid selected date format" });
+    }
 
-    if (!selectedPrice) {
-      return res.status(400).json({
-        message: "No price available for the selected date and airport",
-      });
+    let finalSelectedPrice = null;
+    let finalSelectedHotel = null;  // Default to null
+
+    // Handle hotel data - regardless of mode
+    // Check if selectedHotel is a string but not a valid ObjectId
+    if (selectedHotel && typeof selectedHotel === 'string' && !mongoose.Types.ObjectId.isValid(selectedHotel)) {
+      // If it's a string (like a hotel name), store it in price object
+      // We'll create the finalSelectedPrice first if needed
+      if (!selectedPrice) {
+        finalSelectedPrice = { price: 0, hotel: selectedHotel };
+      } else {
+        finalSelectedPrice = { ...selectedPrice, hotel: selectedHotel };
+      }
+      // Leave finalSelectedHotel as null
+    } else {
+      // If it's a valid ObjectId or null, use it directly
+      finalSelectedHotel = selectedHotel;
+      finalSelectedPrice = selectedPrice || { price: 0 };
+    }
+
+    // For manual entries, we skip the price validation
+    if (isManualEntry) {
+      console.log("Manual entry detected, using provided price data");
+    } else {
+      // For automatic entries, check if we already have a valid selectedPrice from frontend
+      if (!finalSelectedPrice.price) {
+        // If we don't have a valid price, try to find it based on airport and date
+        const dealPrice = deal.prices.find(
+          (price) =>
+            price.airport === airport.toUpperCase() &&
+            new Date(price.startdate).toISOString().split("T")[0] === selectedDate
+        );
+
+        if (!dealPrice) {
+          return res.status(400).json({
+            message: "No price available for the selected date and airport",
+          });
+        }
+
+        finalSelectedPrice = {
+          ...finalSelectedPrice,
+          price: dealPrice.price,
+          flightDetails: dealPrice.flightDetails,
+        };
+      }
+      
+      // Handle hotel in automatic mode if not already set
+      if (!finalSelectedHotel && !finalSelectedPrice.hotel) {
+        const matchedPrice = deal.prices.find(p => 
+          p.airport === airport.toUpperCase() && 
+          new Date(p.startdate).toISOString().split("T")[0] === selectedDate
+        );
+        
+        if (matchedPrice && matchedPrice.hotel) {
+          finalSelectedHotel = matchedPrice.hotel;
+        }
+      }
+      
+      // Use dealPrice enddate as returnDate if not specified and in automatic mode
+      if (!returnDateObj) {
+        const matchedPrice = deal.prices.find(
+          p => p.airport === airport.toUpperCase() && 
+          new Date(p.startdate).toISOString().split("T")[0] === selectedDate
+        );
+        if (matchedPrice) {
+          returnDateObj = new Date(matchedPrice.enddate);
+        }
+      }
     }
 
     // Create the booking
@@ -242,11 +318,8 @@ const createBookingByAdmin = async (req, res) => {
       airport: airport.toUpperCase(),
       adults,
       children,
-      selectedHotel: selectedPrice.hotel, // Hotel information
-      selectedPrice: {
-        price: selectedPrice.price,
-        flightDetails: selectedPrice.flightDetails,
-      },
+      selectedHotel: finalSelectedHotel, // Use the hotel we determined
+      selectedPrice: finalSelectedPrice, // Use the price we determined
     });
 
     await booking.save();
@@ -303,6 +376,7 @@ const updateBooking = async (req, res) => {
       children = 0,
       selectedHotel,
       selectedPrice,
+      isManualEntry = false, // Add manual entry flag here too
     } = req.body;
 
     // Format selectedDate and returnDate if needed
@@ -315,6 +389,81 @@ const updateBooking = async (req, res) => {
       return new Date(dateStr);
     };
 
+    // Process dates based on mode
+    const formattedSelectedDate = formatDate(selectedDate);
+    let formattedReturnDate = formatDate(returnDate);
+    
+    if (!formattedSelectedDate) {
+      return res.status(400).json({ message: "Selected date is required" });
+    }
+    
+    // In automatic mode, return date is required
+    if (!isManualEntry && !formattedReturnDate) {
+      return res.status(400).json({ message: "Return date is required in automatic mode" });
+    }
+
+    // Process the hotel data and price data
+    let finalSelectedHotel = null;
+    let finalSelectedPrice = selectedPrice || { price: 0 };
+    
+    // Handle hotel data - regardless of mode
+    // Check if selectedHotel is a string but not a valid ObjectId
+    if (selectedHotel && typeof selectedHotel === 'string' && !mongoose.Types.ObjectId.isValid(selectedHotel)) {
+      // If it's a string (like a hotel name), store it in price object
+      finalSelectedPrice = {
+        ...finalSelectedPrice,
+        hotel: selectedHotel
+      };
+      // Leave finalSelectedHotel as null
+    } else {
+      // If it's a valid ObjectId or null, use it directly
+      finalSelectedHotel = selectedHotel;
+    }
+
+    // Validate the deal exists if this is being changed
+    if (dealId && !isManualEntry && !finalSelectedPrice.price) {
+      // Only need to validate if we don't already have a valid price from frontend
+      const deal = await Deal.findById(dealId);
+      if (!deal) {
+        return res.status(404).json({ message: "Deal not found" });
+      }
+      
+      // Only validate price availability if this is not a manual entry and we don't have a price
+      if (selectedDate && airport) {
+        const formattedDate = typeof selectedDate === 'string' ? 
+          selectedDate.split('T')[0] : new Date(selectedDate).toISOString().split('T')[0];
+          
+        const dealPrice = deal.prices.find(
+          (price) =>
+            price.airport === airport.toUpperCase() &&
+            new Date(price.startdate).toISOString().split("T")[0] === formattedDate
+        );
+
+        if (!dealPrice) {
+          return res.status(400).json({
+            message: "No price available for the selected date and airport",
+          });
+        }
+        
+        // If we found a matching price in the database, use it
+        finalSelectedPrice = {
+          ...finalSelectedPrice,
+          price: dealPrice.price,
+          flightDetails: dealPrice.flightDetails
+        };
+        
+        // If hotel not set yet and we found a matching hotel in the database, use it
+        if (!finalSelectedHotel && !finalSelectedPrice.hotel && dealPrice.hotel) {
+          finalSelectedHotel = dealPrice.hotel;
+        }
+        
+        // Use dealPrice enddate as returnDate if not specified and in automatic mode
+        if (!formattedReturnDate) {
+          formattedReturnDate = new Date(dealPrice.enddate);
+        }
+      }
+    }
+
     const updatedBooking = await Booking.findByIdAndUpdate(
       bookingId,
       {
@@ -323,13 +472,13 @@ const updateBooking = async (req, res) => {
         email,
         phone,
         message,
-        selectedDate: formatDate(selectedDate),
-        returnDate: formatDate(returnDate),
-        airport,
+        selectedDate: formattedSelectedDate,
+        returnDate: formattedReturnDate,
+        airport: airport ? airport.toUpperCase() : undefined,
         adults,
         children,
-        selectedHotel,
-        selectedPrice,
+        selectedHotel: finalSelectedHotel,
+        selectedPrice: finalSelectedPrice,
       },
       { new: true }
     );
@@ -390,7 +539,8 @@ const getDealsDropdown = async (req, res) => {
   try {
     const deals = await Deal.find({})
       .select("title prices") // Only fetch title and prices
-      .populate("prices.hotel", "name"); // Populate hotel name only
+      .populate("prices.hotel", "name") // Populate hotel name only
+      .populate("prices.airport", "name code"); // Add airport name and code population
 
     // Format data for dropdown use
     const dropdownData = deals.map((deal) => ({
