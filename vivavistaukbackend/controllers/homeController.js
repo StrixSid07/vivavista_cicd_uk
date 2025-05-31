@@ -10,7 +10,7 @@ const validator = require("validator");
 /** ✅ Get Featured Deals */
 exports.getFeaturedDeals = async (req, res) => {
   try {
-    const deals = await Deal.find({ isFeatured: true }).limit(6);
+    const deals = await Deal.find({ isFeatured: true }).limit(21);
     res.json(deals);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch featured deals" });
@@ -153,36 +153,9 @@ exports.getLatestBlogs = async (req, res) => {
 };
 
 /** ✅ Get Homepage Data */
-// exports.getHomepageData = async (req, res) => {
-//   try {
-//     const featuredDeals = await Deal.find({ isFeatured: true })
-//     .populate({
-//       path: "destination",
-//       select: "name", // Only fetch name & image from Destination
-//     })
-//     .limit(6);
-//     const destinations = await Destination.find()
-//       .populate({
-//         path: "deals",
-//         model: "Deal",
-//       })
-//       .limit(6);
-//     const reviews = await Review.find().limit(6);
-//     const blogs = await Blog.find().sort({ createdAt: -1 }).limit(3);
-
-//     res.json({
-//       featuredDeals,
-//       destinations,
-//       reviews,
-//       blogs,
-//     });
-//   } catch (error) {
-//     res.status(500).json({ error: "Failed to fetch homepage data" });
-//   }
-// };
 exports.getHomepageData = async (req, res) => {
   try {
-    // Get featured deals (limit 6)
+    // Get featured deals (limit 21)
     const featuredDeals = await Deal.find({ isFeatured: true })
       .select("title images isHotdeal isTopDeal destination prices days tag")
       .populate({
@@ -197,7 +170,8 @@ exports.getHomepageData = async (req, res) => {
         path: "prices.hotel", // Populating hotel in prices array
         select: "name tripAdvisorRating tripAdvisorReviews", // Include rating & review count
       })
-      .limit(7);
+      .sort({ updatedAt: -1 }) // Sort by most recently updated first
+      .limit(21); // Strict limit of 21 featured deals
 
     // Get destinations (limit 6), with associated deals
     const destinations = await Destination.find()
@@ -221,7 +195,7 @@ exports.getHomepageData = async (req, res) => {
         ],
       })
       .limit(7);
-    console.log(destinations);
+    
     // Get reviews (limit 6)
     const reviews = await Review.find()
       .select("name comment rating createdAt")

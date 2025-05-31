@@ -6,6 +6,56 @@ const Destination = require("../models/Destination");
 const IMAGE_STORAGE = process.env.IMAGE_STORAGE || "local";
 const { uploadToS3, deleteFromS3 } = require("../middleware/imageUpload");
 
+// Maximum number of featured deals allowed
+const MAX_FEATURED_DEALS = 21;
+
+// Helper function to manage featured deals count
+const manageFeaturedDealsLimit = async (newDealId) => {
+  try {
+    // Count current featured deals
+    const featuredCount = await Deal.countDocuments({ isFeatured: true });
+    
+    console.log(`Current featured deals count: ${featuredCount}`);
+    
+    // If we're over the limit, remove the oldest featured deal
+    if (featuredCount > MAX_FEATURED_DEALS) {
+      console.log(`Exceeded limit of ${MAX_FEATURED_DEALS} featured deals. Removing oldest.`);
+      
+      // Find the oldest featured deal (excluding the newly added one)
+      const oldestFeatured = await Deal.findOne({
+        isFeatured: true,
+        _id: { $ne: newDealId } // Exclude the new deal
+      }).sort({ updatedAt: 1 }); // Sort by oldest first
+      
+      if (oldestFeatured) {
+        console.log(`Removing featured status from deal: ${oldestFeatured._id} (${oldestFeatured.title})`);
+        
+        // Update the oldest deal to not be featured
+        await Deal.findByIdAndUpdate(oldestFeatured._id, {
+          isFeatured: false
+        });
+        
+        return {
+          success: true,
+          removedDeal: oldestFeatured._id,
+          message: `Removed featured status from deal: ${oldestFeatured.title}`
+        };
+      }
+    }
+    
+    return { 
+      success: true,
+      message: "No need to remove any featured deals"
+    };
+  } catch (error) {
+    console.error("Error managing featured deals limit:", error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
 // ✅ Create a New Deal with Image Upload
 const createDeal = async (req, res) => {
   try {
@@ -144,10 +194,20 @@ const createDeal = async (req, res) => {
       { $addToSet: { deals: newDeal._id } },
       { new: true }
     );
+    
+    // If this is a featured deal, manage the featured deals limit
+    let featuredResult = { success: true };
+    if (isFeatured) {
+      featuredResult = await manageFeaturedDealsLimit(newDeal._id);
+    }
 
     return res
       .status(201)
-      .json({ message: "Deal created successfully", deal: newDeal });
+      .json({ 
+        message: "Deal created successfully", 
+        deal: newDeal,
+        featuredResult
+      });
   } catch (error) {
     console.error("CreateDeal Error:", error);
     // Handle mongoose validation errors
@@ -758,13 +818,24 @@ const updateDeal = async (req, res) => {
 
     console.log("Updating deal with data:", updatedData);
 
+    // Check if deal is being marked as featured
+    let featuredResult = { success: true };
+    if (parsedData.isFeatured === true && !deal.isFeatured) {
+      console.log(`Deal ${dealId} is being marked as featured. Managing featured deals limit.`);
+      featuredResult = await manageFeaturedDealsLimit(dealId);
+    }
+
     // Update the deal with the new data
     const updatedDeal = await Deal.findByIdAndUpdate(dealId, updatedData, {
       new: true,
       runValidators: true,
     });
 
-    res.json({ message: "Deal updated successfully", deal: updatedDeal });
+    res.json({ 
+      message: "Deal updated successfully", 
+      deal: updatedDeal,
+      featuredResult
+    });
   } catch (error) {
     console.error("Error updating deal:", error);
     res.status(500).json({ message: "Server error", error: error.message });
