@@ -1,26 +1,84 @@
 import React, { useState, useEffect } from "react";
 import { FaArrowLeft, FaArrowRight } from "react-icons/fa";
 import { water } from "../../assets";
+import axios from "axios";
+import { Base_Url } from "../../utils/Api";
 
-const AutoSlider = ({ slides }) => {
+const AutoSlider = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [focused, setFocused] = useState(false);
+  const [slides, setSlides] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentIndex((prevIndex) => (prevIndex + 1) % slides.length);
-    }, 3000);
-    return () => clearInterval(interval);
+    // Fetch autoslider data from API
+    const fetchAutosliders = async () => {
+      try {
+        console.log("Fetching autoslider data from:", `${Base_Url}/autoslider`);
+        
+        const response = await axios.get(`${Base_Url}/autoslider`);
+        
+        // Check if response.data exists and is an array
+        if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+          // Map API data to the format expected by the component
+          const slidesData = response.data.map(item => ({
+            image: item.image,
+            title: item.title,
+            description: item.description
+          }));
+          setSlides(slidesData);
+          console.log("Successfully loaded autoslider data:", slidesData);
+        } else {
+          console.log("No autoslider data found or response is not an array:", response.data);
+          setSlides([]);
+        }
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching autoslider data:", error);
+        // Fall back to mock data for development/testing
+        const mockSlides = [
+          {
+            title: "Example Slide 1",
+            description: "This is a fallback slide when API is unavailable",
+            image: "https://via.placeholder.com/800x500?text=Slide+1"
+          },
+          {
+            title: "Example Slide 2",
+            description: "Add your actual API URL in environment variables",
+            image: "https://via.placeholder.com/800x500?text=Slide+2"
+          }
+        ];
+        console.log("Using fallback mock data");
+        setSlides(mockSlides);
+        setLoading(false);
+      }
+    };
+
+    fetchAutosliders();
   }, []);
 
+  useEffect(() => {
+    // Only start interval if we have slides
+    if (slides.length > 0) {
+      const interval = setInterval(() => {
+        setCurrentIndex((prevIndex) => (prevIndex + 1) % slides.length);
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [slides]);
+
   const nextSlide = () => {
-    setCurrentIndex((currentIndex + 1) % slides.length);
-    setFocused(false);
+    if (slides.length > 0) {
+      setCurrentIndex((currentIndex + 1) % slides.length);
+      setFocused(false);
+    }
   };
 
   const prevSlide = () => {
-    setCurrentIndex((currentIndex - 1 + slides.length) % slides.length);
-    setFocused(false);
+    if (slides.length > 0) {
+      setCurrentIndex((currentIndex - 1 + slides.length) % slides.length);
+      setFocused(false);
+    }
   };
 
   const handleFocus = () => {
@@ -35,6 +93,16 @@ const AutoSlider = ({ slides }) => {
       return "z-0 translate-x-[50%] opacity-70";
     return "hidden";
   };
+
+  // If loading or no slides, show a placeholder or nothing
+  if (loading) {
+    return null; // Optional: show a loading indicator here
+  }
+
+  // If no slides data, don't render the component
+  if (slides.length === 0) {
+    return null;
+  }
 
   return (
     <div

@@ -93,6 +93,7 @@ app.use("/api/trending", require("./routes/trandingRoutes"));
 app.use("/api/faqs", require("./routes/faqsRoutes"));
 app.use("/api/terms", require("./routes/termsRoutes"));
 app.use("/api/carousel", require("./routes/carouselRoutes"));
+app.use("/api/autoslider", require("./routes/autosliderRoutes"));
 app.use("/api/holidays", require("./routes/holidayRoutes"));
 app.use("/api/boardbasis", require("./routes/boardbasisRoutes"));
 app.use("/api/mail", require("./routes/contactRoutes"));

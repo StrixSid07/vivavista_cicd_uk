@@ -18,3 +18,4 @@ export * from "@/pages/dashboard/manageboardbasis";
 export * from "@/pages/dashboard/manageairports";
 export * from "@/pages/dashboard/managedealsexternal";
 export * from "@/pages/dashboard/managevideotutorial";
+export * from "@/pages/dashboard/manageautoslider";

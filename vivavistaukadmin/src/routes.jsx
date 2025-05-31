@@ -15,6 +15,7 @@ import {
   DocumentArrowUpIcon,
   UserIcon,
   VideoCameraIcon,
+  FilmIcon,
 } from "@heroicons/react/24/solid";
 import {
   ManageHotel,
@@ -32,6 +33,7 @@ import {
   ManageDealExternal,
   AdminVideoTutorials,
   ManageNewsletter,
+  ManageAutoslider,
 } from "@/pages/dashboard";
 import { LogIn } from "@/pages/auth";
 
@@ -126,6 +128,12 @@ export const routes = [
         name: "Manage Carousel",
         path: "/manage-carousel",
         element: <ManageCarousel />,
+      },
+      {
+        icon: <FilmIcon {...icon} />,
+        name: "Manage Autoslider",
+        path: "/manage-autoslider",
+        element: <ManageAutoslider />,
       },
     ],
   },
