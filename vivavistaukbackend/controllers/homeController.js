@@ -174,8 +174,10 @@ exports.getHomepageData = async (req, res) => {
       .limit(21); // Strict limit of 21 featured deals
 
     // Get destinations (limit 6), with associated deals
-    const destinations = await Destination.find()
-      .select("name image isPopular")
+    const destinations = await Destination.find({ isPopular: true })
+      .select("name image isPopular createdAt")
+      .sort({ createdAt: -1 }) 
+      .limit(3)
       .populate({
         path: "deals",
         select: "title images isHotdeal isTopDeal destination prices days tag",
@@ -193,9 +195,8 @@ exports.getHomepageData = async (req, res) => {
             select: "name tripAdvisorRating tripAdvisorReviews",
           },
         ],
-      })
-      .limit(7);
-    
+      });
+    // console.log(destinations);
     // Get reviews (limit 6)
     const reviews = await Review.find()
       .select("name comment rating createdAt")
