@@ -47,6 +47,7 @@ export const ManageDeals = () => {
     description: "",
     availableCountries: [],
     destination: "",
+    destinations: [],
     days: 0,
     rooms: 0,
     guests: 0,
@@ -179,7 +180,19 @@ export const ManageDeals = () => {
     setTimeout(() => setButtonDisabled(false), 500); // Prevent double-clicks for 500ms
     
     setCurrentDeal(deal);
-    // console.log("thisis images", deal.images);
+    
+    // Debug destinations and ensure proper mapping
+    let destinationIds = [];
+    if (deal && deal.destinations) {
+      console.log("Original destinations:", deal.destinations);
+      
+      // Ensure destinations are properly mapped to IDs
+      destinationIds = deal.destinations.map(dest => 
+        typeof dest === 'object' ? dest._id : dest
+      );
+      console.log("Mapped destination IDs:", destinationIds);
+    }
+    
     setFormData(
       deal
         ? {
@@ -188,6 +201,7 @@ export const ManageDeals = () => {
             description: deal.description,
             availableCountries: deal.availableCountries || [],
             destination: deal.destination ? deal.destination._id : "" || "",
+            destinations: deal && deal.destinations ? destinationIds : [],
             days: deal.days || 0,
             rooms: deal.rooms || 0,
             guests: deal.guests || 0,
@@ -278,56 +292,57 @@ export const ManageDeals = () => {
                       },
                     },
                   ],
-          }
-        : {
-            title: "",
-            description: "",
-            availableCountries: [],
-            destination: "",
-            days: 0,
-            rooms: 0,
-            guests: 0,
-            distanceToCenter: "",
-            distanceToBeach: "",
-            isTopDeal: false,
-            isHotdeal: false,
-            isFeatured: false,
-            boardBasis: "",
-            hotels: [],
-            holidaycategories: [],
-            images: [],
-            itinerary: [{ title: "", description: "" }],
-            whatsIncluded: [""],
-            exclusiveAdditions: [""],
-            termsAndConditions: [""],
-            tag: "",
-            LowDeposite: "",
-            prices: [
-              {
-                country: "",
-                priceswitch: false,
-                airport: [],
-                hotel: "",
-                startdate: "", // Ensure this is initialized as an empty string
-                enddate: "", // Ensure this is initialized as an empty string
-                price: 0,
-                flightDetails: {
-                  outbound: {
-                    departureTime: "",
-                    arrivalTime: "",
-                    airline: "",
-                    flightNumber: "",
-                  },
-                  returnFlight: {
-                    departureTime: "",
-                    arrivalTime: "",
-                    airline: "",
-                    flightNumber: "",
-                  },
+        }
+      : {
+          title: "",
+          description: "",
+          availableCountries: [],
+          destination: "",
+          destinations: [],
+          days: 0,
+          rooms: 0,
+          guests: 0,
+          distanceToCenter: "",
+          distanceToBeach: "",
+          isTopDeal: false,
+          isHotdeal: false,
+          isFeatured: false,
+          boardBasis: "",
+          hotels: [],
+          holidaycategories: [],
+          images: [],
+          itinerary: [{ title: "", description: "" }],
+          whatsIncluded: [""],
+          exclusiveAdditions: [""],
+          termsAndConditions: [""],
+          tag: "",
+          LowDeposite: "",
+          prices: [
+            {
+              country: "",
+              priceswitch: false,
+              airport: [],
+              hotel: "",
+              startdate: "", // Ensure this is initialized as an empty string
+              enddate: "", // Ensure this is initialized as an empty string
+              price: 0,
+              flightDetails: {
+                outbound: {
+                  departureTime: "",
+                  arrivalTime: "",
+                  airline: "",
+                  flightNumber: "",
+                },
+                returnFlight: {
+                  departureTime: "",
+                  arrivalTime: "",
+                  airline: "",
+                  flightNumber: "",
                 },
               },
-            ],
-          },
+            },
+          ],
+        },
     );
     setOpenDialog(true);
   };
@@ -754,22 +769,29 @@ export const ManageDeals = () => {
               }
             />
             <Typography variant="h6">Available Countries</Typography>
-            <div className="flex flex-wrap gap-1">
+            <div className="grid gap-2">
               {["UK", "USA", "Canada"].map((country) => (
-                <label key={country} className="flex items-center">
+                <label
+                  key={country}
+                  className="flex cursor-pointer items-center"
+                >
                   <Checkbox
+                    ripple={false}
                     color="blue"
+                    containerProps={{ className: "p-0" }}
+                    className="hover:before:content-none"
                     checked={formData.availableCountries.includes(country)}
                     onChange={(e) => {
                       const isChecked = e.target.checked;
-                      setFormData((prev) => ({
-                        ...prev,
-                        availableCountries: isChecked
-                          ? [...prev.availableCountries, country]
-                          : prev.availableCountries.filter(
-                              (c) => c !== country,
-                            ),
-                      }));
+                      const updatedCountries = isChecked
+                        ? [...formData.availableCountries, country]
+                        : formData.availableCountries.filter(
+                            (c) => c !== country
+                          );
+                      setFormData({
+                        ...formData,
+                        availableCountries: updatedCountries,
+                      });
                     }}
                   />
                   <span>{country}</span>
@@ -777,12 +799,22 @@ export const ManageDeals = () => {
               ))}
             </div>
 
+            {/* Single destination support (legacy) */}
             <Select
-              label="Destination"
+              label="Primary Destination"
               value={formData.destination}
-              onChange={(value) =>
-                setFormData({ ...formData, destination: value })
-              }
+              onChange={(value) => {
+                // If this destination is in the multicenter list, remove it
+                const updatedDestinations = formData.destinations.filter(
+                  id => id.toString() !== value.toString()
+                );
+                
+                setFormData({ 
+                  ...formData, 
+                  destination: value,
+                  destinations: updatedDestinations
+                });
+              }}
               required
             >
               {destinations.map((destination) => (
@@ -791,6 +823,58 @@ export const ManageDeals = () => {
                 </Option>
               ))}
             </Select>
+            
+            {/* Multiple destinations support */}
+            <Typography variant="h6" color="gray">Multicenter</Typography>
+            <Menu placement="bottom-start">
+              <MenuHandler>
+                <Button
+                  variant="gradient"
+                  color="orange"
+                  className="w-full text-left"
+                >
+                  {formData.destinations.length > 0
+                    ? `${formData.destinations.length} destination(s) selected`
+                    : "Add Multiple Destinations"}
+                </Button>
+              </MenuHandler>
+              <MenuList className="z-[100000] max-h-64 overflow-auto">
+                {destinations
+                  .filter(destination => destination._id !== formData.destination) // Filter out primary destination
+                  .map((destination) => (
+                  <MenuItem
+                    key={destination._id}
+                    className="flex items-center gap-2"
+                    onClick={(e) => e.preventDefault()} // Prevent dropdown from closing
+                  >
+                    <Checkbox
+                      ripple={false}
+                      color="orange"
+                      containerProps={{ className: "p-0" }}
+                      className="hover:before:content-none"
+                      checked={formData.destinations.some(id => 
+                        id === destination._id || id.toString() === destination._id.toString()
+                      )}
+                      onChange={(e) => {
+                        e.stopPropagation(); // Prevent bubbling to MenuItem
+                        const isChecked = e.target.checked;
+                        const updatedDestinations = isChecked
+                          ? [...formData.destinations, destination._id]
+                          : formData.destinations.filter(
+                              id => id.toString() !== destination._id.toString()
+                            );
+                        setFormData({
+                          ...formData,
+                          destinations: updatedDestinations,
+                        });
+                        console.log("Updated destinations:", updatedDestinations);
+                      }}
+                    />
+                    <span>{destination.name}</span>
+                  </MenuItem>
+                ))}
+              </MenuList>
+            </Menu>
 
             <Typography variant="h6">Select Holidays Categories</Typography>
             <Menu placement="bottom-start">
@@ -1741,6 +1825,20 @@ export const ManageDeals = () => {
                       ? currentDeal.destination.name
                       : "N/A"}
                   </Typography>
+                  
+                  {/* Display Multiple Destinations */}
+                  {currentDeal.destinations && currentDeal.destinations.length > 0 && (
+                    <Typography variant="paragraph" className="text-black">
+                      <span className="font-bold text-deep-orange-500">
+                        Multicenter:
+                      </span>{" "}
+                      {currentDeal.destinations.map(dest => 
+                        typeof dest === 'object' ? dest.name : 
+                        destinations.find(d => d._id === dest)?.name || dest
+                      ).join(', ')}
+                    </Typography>
+                  )}
+                  
                   <Typography variant="paragraph" className="text-black">
                     <span className="font-bold text-deep-orange-500">
                       Board Basis:

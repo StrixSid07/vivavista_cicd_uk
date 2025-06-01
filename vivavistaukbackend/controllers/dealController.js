@@ -65,6 +65,7 @@ const createDeal = async (req, res) => {
       description,
       availableCountries,
       destination,
+      destinations = [],
       prices,
       hotels,
       holidaycategories,
@@ -97,10 +98,11 @@ const createDeal = async (req, res) => {
         .status(400)
         .json({ message: "At least one country must be selected." });
     }
-    if (!destination || !mongoose.Types.ObjectId.isValid(destination)) {
+    if ((!destination || !mongoose.Types.ObjectId.isValid(destination)) && 
+        (!Array.isArray(destinations) || destinations.length === 0)) {
       return res
         .status(400)
-        .json({ message: "A valid destination must be selected." });
+        .json({ message: "At least one destination must be selected." });
     }
     if (!boardBasis || !mongoose.Types.ObjectId.isValid(boardBasis)) {
       return res
@@ -165,6 +167,7 @@ const createDeal = async (req, res) => {
       images: imageUrls,
       availableCountries,
       destination,
+      destinations,
       holidaycategories,
       hotels,
       boardBasis,
@@ -188,12 +191,27 @@ const createDeal = async (req, res) => {
 
     await newDeal.save();
 
-    // Link to destination
-    await Destination.findByIdAndUpdate(
-      destination,
-      { $addToSet: { deals: newDeal._id } },
-      { new: true }
-    );
+    // Link to single destination (legacy support)
+    if (destination && mongoose.Types.ObjectId.isValid(destination)) {
+      await Destination.findByIdAndUpdate(
+        destination,
+        { $addToSet: { deals: newDeal._id } },
+        { new: true }
+      );
+    }
+    
+    // Link to multiple destinations
+    if (Array.isArray(destinations) && destinations.length > 0) {
+      await Promise.all(
+        destinations.map(destId => 
+          Destination.findByIdAndUpdate(
+            destId,
+            { $addToSet: { deals: newDeal._id } },
+            { new: true }
+          )
+        )
+      );
+    }
     
     // If this is a featured deal, manage the featured deals limit
     let featuredResult = { success: true };
@@ -386,201 +404,53 @@ if (airport) {
 // ✅ Get All Deals for Admin
 const getAllDealsAdmin = async (req, res) => {
   try {
-    const {
-      country,
-      airport,
-      fromdate,
-      todate,
-      minPrice,
-      destination,
-      maxPrice,
-      boardBasis,
-      rating,
-      holidayType,
-      facilities,
-      rooms,
-      guests,
-      sort,
-      search,
-    } = req.query;
-
-    let query = {};
-
-    // ✅ Filters
-    if (country) query.availableCountries = country;
-    if (destination) query["destination"] = destination;
-    if (airport) query["prices.airport"] = airport;
-
-    if (fromdate && todate) {
-      query["prices"] = {
-        $elemMatch: {
-          startdate: { $gte: new Date(fromdate), $lte: new Date(todate) },
-        },
-      };
-    }
-
-    if (minPrice || maxPrice) {
-      query["prices.price"] = {};
-      if (minPrice) query["prices.price"].$gte = Number(minPrice);
-      if (maxPrice) query["prices.price"].$lte = Number(maxPrice);
-    }
-
-    if (boardBasis) query.boardBasis = boardBasis;
-    if (rating) query["hotels.tripAdvisorRating"] = { $gte: Number(rating) };
-    if (holidayType)
-      query["hotels.facilities"] = { $in: holidayType.split(",") };
-    if (facilities)
-      query["hotels.facilities"] = { $all: facilities.split(",") };
-    if (search) query["hotels.name"] = { $regex: search, $options: "i" };
-    if (rooms) query.rooms = Number(rooms);
-    if (guests) query.guests = Number(guests);
-
-    // ✅ Check if any filters were passed
-    const hasFilters =
-      country ||
-      airport ||
-      fromdate ||
-      todate ||
-      minPrice ||
-      maxPrice ||
-      destination ||
-      boardBasis ||
-      rating ||
-      holidayType ||
-      facilities ||
-      rooms ||
-      guests ||
-      search;
-
-    // ✅ Default condition: show all deals, even if prices missing or empty
-    if (!hasFilters) {
-      query.$or = [
-        { prices: { $exists: false } },
-        { prices: { $size: 0 } },
-        { "prices.0": { $exists: true } }, // at least one price
-      ];
-    }
-
-    // ✅ Sorting logic
-    let sortOption = { updatedAt: -1 };
-    if (sort === "lowest-price") sortOption = { "prices.price": 1 };
-    else if (sort === "highest-price") sortOption = { "prices.price": -1 };
-    else if (sort === "best-rating")
-      sortOption = { "hotels.tripAdvisorRating": -1 };
-
-    // ✅ Fetch Deals
-    let deals = await Deal.find(query)
+    const deals = await Deal.find()
+      .sort({ createdAt: -1 })
       .populate("destination")
-      .populate("boardBasis", "name")
-      .populate("hotels", "name tripAdvisorRating facilities location images")
-      .populate({
-        path: "prices.hotel",
-        select: "name tripAdvisorRating tripAdvisorReviews",
-      })
-      .select(
-        "title tag priceswitch boardBasis LowDeposite availableCountries description rooms guests prices distanceToCenter distanceToBeach days images isTopDeal isHotdeal isFeatured holidaycategories itinerary whatsIncluded exclusiveAdditions termsAndConditions"
-      )
-      .sort(sortOption)
-      .limit(50)
-      .lean();
-
-    // ✅ Filter airport-specific prices if needed
-    if (airport) {
-      deals = deals
-        .map((deal) => {
-          const relevantPrices = deal.prices.filter((p) => {
-            return (
-              p.airport &&
-              Array.isArray(p.airport) &&
-              p.airport.includes(airport)
-            );
-          });
-          return relevantPrices.length > 0
-            ? { ...deal, prices: relevantPrices }
-            : null;
-        })
-        .filter(Boolean);
-    }
-
-    // ✅ Sort prices within each deal
-    deals = deals.map((deal) => {
-      if (Array.isArray(deal.prices)) {
-        if (sort === "highest-price") {
-          deal.prices.sort((a, b) => b.price - a.price);
-        } else {
-          deal.prices.sort((a, b) => a.price - b.price);
-        }
-      }
-      return deal;
-    });
+      .populate("destinations")
+      .populate("hotels")
+      .populate("boardBasis")
+      .populate("prices.hotel")
+      .populate("prices.airport")
+      .populate("holidaycategories");
 
     res.json(deals);
   } catch (error) {
-    console.error("error", error);
+    console.error("Error fetching all deals for admin:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
 // ✅ Get a Single Deal (Only If Available in User's Selected Country)
-// const getDealById = async (req, res) => {
-//   try {
-//     const deal = await Deal.findById(req.params.id)
-//       .populate("destination", "name isPopular")
-//       .populate("prices.hotel")
-//       .populate("hotels");
-
-//     if (!deal) return res.status(404).json({ message: "Deal not found" });
-
-//     // If the user is NOT an admin, apply country restriction
-//     if (!req.user || req.user.role !== "admin") {
-//       const userCountry = req.session.country || "UK";
-//       if (!deal.availableCountries.includes(userCountry)) {
-//         return res.status(403).json({
-//           message: "This deal is not available in your selected country.",
-//         });
-//       }
-
-//       // Filter price for the selected country
-//       // const countryPrice = deal.prices.find((p) => p.country === userCountry);
-//       const countryPrices = deal.prices.filter(
-//         (p) => p.country === userCountry
-//       );
-
-//       // if (!countryPrice) {
-//       //   return res.status(404).json({
-//       //     message: "Pricing not available for your selected country.",
-//       //   });
-//       // }
-
-//       if (!countryPrices) {
-//         return res.status(404).json({
-//           message: "Pricing not available for your selected country.",
-//         });
-//       }
-
-//       return res.json({
-//         ...deal._doc,
-//         // prices: [countryPrice], // Only return the price for user's country
-//         prices: countryPrices,
-//       });
-//     }
-
-//     // Admin gets full deal data
-//     res.json(deal);
-//   } catch (error) {
-//     res.status(500).json({ message: "Server error", error: error.message });
-//   }
-// };
 const getDealById = async (req, res) => {
   try {
     const deal = await Deal.findById(req.params.id)
-      .populate("destination", "name isPopular")
-      .populate("boardBasis", "name")
-      .populate("prices.hotel")
-      .populate("prices.airport")
-      .populate("hotels");
+      .populate("destination")
+      .populate("destinations")
+      .populate({
+        path: "holidaycategories",
+        select: "name",
+      })
+      .populate({
+        path: "boardBasis",
+        select: "name",
+      })
+      .populate({
+        path: "hotels",
+        select: "name stars tripAdvisorRating facilities location images",
+      })
+      .populate({
+        path: "prices.hotel",
+        select: "name stars tripAdvisorRating facilities location",
+      })
+      .populate({
+        path: "prices.airport",
+        select: "name code",
+      });
 
-    if (!deal) return res.status(404).json({ message: "Deal not found" });
+    if (!deal) {
+      return res.status(404).json({ message: "Deal not found" });
+    }
 
     const today = new Date();
     const threeDaysFromNow = new Date();
@@ -621,111 +491,12 @@ const getDealById = async (req, res) => {
 
     res.json(deal);
   } catch (error) {
+    console.error("Error fetching deal by ID:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
 // ✅ Update a Deal (Admin Only)
-// const updateDeal = async (req, res) => {
-//   try {
-//     const dealId = req.params.id;
-//     const deal = await Deal.findById(dealId);
-
-//     if (!deal) {
-//       return res.status(404).json({ message: "Deal not found" });
-//     }
-
-//     // Validate availableCountries if provided
-//     if (
-//       req.body.availableCountries &&
-//       (!Array.isArray(req.body.availableCountries) ||
-//         req.body.availableCountries.length === 0)
-//     ) {
-//       return res
-//         .status(400)
-//         .json({ message: "At least one country must be selected." });
-//     }
-
-//     // Extract image URLs from the request
-//     let imageUrls = [];
-//     // if (req.files && req.files.length > 0) {
-//     //   imageUrls = req.files.map((file) =>
-//     //     IMAGE_STORAGE === "s3" ? file.location : `/uploads/${file.filename}`
-//     //   );
-//     // }
-
-//     // Parse the JSON data from req.body.data
-
-//     if (req.files && req.files.length > 0) {
-//       if (IMAGE_STORAGE === "s3") {
-//         imageUrls = await Promise.all(
-//           req.files.map((file) => uploadToS3(file))
-//         );
-//       } else {
-//         imageUrls = req.files.map((file) => `/uploads/${file.filename}`);
-//       }
-//     }
-
-//     const parsedData = JSON.parse(req.body.data);
-
-//     // Validate itinerary if provided
-//     if (parsedData.itinerary) {
-//       if (!Array.isArray(parsedData.itinerary)) {
-//         return res.status(400).json({ message: "Itinerary must be an array." });
-//       }
-//       for (let i = 0; i < parsedData.itinerary.length; i++) {
-//         const item = parsedData.itinerary[i];
-//         if (typeof item !== "object" || !item.title || !item.description) {
-//           return res.status(400).json({
-//             message: `Itinerary item at index ${i} must have both title and description.`,
-//           });
-//         }
-//       }
-//     }
-
-//     // Prepare the updated data
-//     const updatedData = {
-//       ...parsedData,
-//       images:
-//         imageUrls.length > 0 ? [...deal.images, ...imageUrls] : deal.images,
-//     };
-
-//     // Handle destination change
-//     if (
-//       parsedData.destination &&
-//       parsedData.destination !== deal.destination?.toString()
-//     ) {
-//       console.log("Destination changed. Updating references.");
-
-//       // Remove deal from old destination
-//       if (deal.destination) {
-//         await Destination.findByIdAndUpdate(deal.destination, {
-//           $pull: { deals: deal._id },
-//         });
-//         console.log("Removed from old destination:", deal.destination);
-//       }
-
-//       // Add deal to new destination
-//       await Destination.findByIdAndUpdate(parsedData.destination, {
-//         $addToSet: { deals: deal._id },
-//       });
-//       console.log("Added to new destination:", parsedData.destination);
-//     }
-
-//     console.log("Updating deal with data:", updatedData);
-
-//     // Update the deal with the new data
-//     const updatedDeal = await Deal.findByIdAndUpdate(dealId, updatedData, {
-//       new: true,
-//       runValidators: true,
-//     });
-
-//     res.json({ message: "Deal updated successfully", deal: updatedDeal });
-//   } catch (error) {
-//     console.error("Error updating deal:", error);
-//     res.status(500).json({ message: "Server error", error: error.message });
-//   }
-// };
 const updateDeal = async (req, res) => {
   try {
     const dealId = req.params.id;
@@ -746,14 +517,14 @@ const updateDeal = async (req, res) => {
         .json({ message: "At least one country must be selected." });
     }
 
-    // Validate destination if provided
+    // Validate destination and destinations if provided
     if (
-      parsedData.destination &&
-      !mongoose.Types.ObjectId.isValid(parsedData.destination)
+      (parsedData.destination && !mongoose.Types.ObjectId.isValid(parsedData.destination)) &&
+      (!Array.isArray(parsedData.destinations) || parsedData.destinations.length === 0)
     ) {
       return res
         .status(400)
-        .json({ message: "A valid destination must be selected." });
+        .json({ message: "At least one valid destination must be selected." });
     }
 
     // Validate boardBasis if provided
@@ -794,12 +565,12 @@ const updateDeal = async (req, res) => {
         imageUrls.length > 0 ? [...deal.images, ...imageUrls] : deal.images, // Keep existing images if no new images
     };
 
-    // Handle destination change
+    // Handle destination change (legacy single destination support)
     if (
       parsedData.destination &&
       parsedData.destination !== deal.destination?.toString()
     ) {
-      console.log("Destination changed. Updating references.");
+      console.log("Single destination changed. Updating references.");
 
       // Remove deal from old destination
       if (deal.destination) {
@@ -814,6 +585,44 @@ const updateDeal = async (req, res) => {
         $addToSet: { deals: deal._id },
       });
       console.log("Added to new destination:", parsedData.destination);
+    }
+    
+    // Handle multiple destinations update
+    if (Array.isArray(parsedData.destinations)) {
+      console.log("Multiple destinations changed. Updating references.");
+      
+      // Get existing destinations
+      const existingDestinations = deal.destinations || [];
+      
+      // Find destinations to remove (destinations that were in the deal but not in the updated list)
+      const destinationsToRemove = existingDestinations.filter(
+        destId => !parsedData.destinations.includes(destId.toString())
+      );
+      
+      // Find destinations to add (destinations that are in the updated list but not in the deal)
+      const destinationsToAdd = parsedData.destinations.filter(
+        destId => !existingDestinations.some(existing => existing.toString() === destId)
+      );
+      
+      // Remove deal from old destinations
+      await Promise.all(
+        destinationsToRemove.map(destId =>
+          Destination.findByIdAndUpdate(destId, {
+            $pull: { deals: deal._id },
+          })
+        )
+      );
+      
+      // Add deal to new destinations
+      await Promise.all(
+        destinationsToAdd.map(destId =>
+          Destination.findByIdAndUpdate(destId, {
+            $addToSet: { deals: deal._id },
+          })
+        )
+      );
+      
+      console.log("Updated multiple destinations successfully");
     }
 
     console.log("Updating deal with data:", updatedData);
