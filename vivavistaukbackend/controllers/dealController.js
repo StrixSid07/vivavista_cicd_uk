@@ -339,6 +339,7 @@ if (airport) {
     // ✅ Fetch Deals with Filters & Sorting
     let deals = await Deal.find(query)
       .populate("destination")
+      .populate("destinations")
       .populate("boardBasis", "name")
       .populate("hotels", "name tripAdvisorRating facilities location images")
       .populate({
@@ -346,7 +347,7 @@ if (airport) {
         select: "name tripAdvisorRating tripAdvisorReviews",
       })
       .select(
-        "title tag priceswitch boardBasis LowDeposite availableCountries description rooms guests prices distanceToCenter distanceToBeach days images isTopDeal isHotdeal isFeatured holidaycategories itinerary whatsIncluded exclusiveAdditions termsAndConditions"
+        "title tag priceswitch boardBasis LowDeposite availableCountries description rooms guests prices distanceToCenter distanceToBeach days images isTopDeal isHotdeal isFeatured holidaycategories itinerary whatsIncluded exclusiveAdditions termsAndConditions destinations"
       )
       .sort(sortOption)
       .limit(50) // Limit to 50 results for performance
@@ -354,6 +355,7 @@ if (airport) {
    if (!deals.length) {
      deals = await Deal.find({})
        .populate("destination")
+       .populate("destinations")
        .populate("boardBasis", "name")
        .populate("hotels", "name tripAdvisorRating facilities location images")
        .populate({
@@ -361,7 +363,7 @@ if (airport) {
          select: "name tripAdvisorRating tripAdvisorReviews",
        })
        .select(
-         "title tag priceswitch boardBasis LowDeposite availableCountries description rooms guests prices distanceToCenter distanceToBeach days images isTopDeal isHotdeal isFeatured holidaycategories itinerary whatsIncluded exclusiveAdditions termsAndConditions"
+         "title tag priceswitch boardBasis LowDeposite availableCountries description rooms guests prices distanceToCenter distanceToBeach days images isTopDeal isHotdeal isFeatured holidaycategories itinerary whatsIncluded exclusiveAdditions termsAndConditions destinations"
        )
        .sort(sortOption)
        .limit(50)
@@ -686,8 +688,15 @@ const getDealsByDestination = async (req, res) => {
   try {
     const { destinationId } = req.params;
 
-    const deals = await Deal.find({ destination: destinationId })
+    // Find deals where the destinationId matches either the primary destination or is in the destinations array
+    const deals = await Deal.find({
+      $or: [
+        { destination: destinationId },
+        { destinations: destinationId }
+      ]
+    })
       .populate("destination")
+      .populate("destinations")
       .populate("hotels");
 
     res.json(deals);
@@ -710,7 +719,10 @@ const searchDeals = async (req, res) => {
 
     // ✅ Filter by Destination (if provided)
     if (destination) {
-      query["destination.name"] = { $regex: destination, $options: "i" };
+      query["$or"] = [
+        { "destination.name": { $regex: destination, $options: "i" } },
+        { "destinations.name": { $regex: destination, $options: "i" } }
+      ];
     }
 
     // ✅ If Date is Provided, Ensure Availability (Future Feature)
@@ -722,8 +734,9 @@ const searchDeals = async (req, res) => {
     // ✅ Fetch Deals with Filters
     let deals = await Deal.find(query)
       .populate("destination", "name")
+      .populate("destinations", "name")
       .populate("hotels", "name tripAdvisorRating facilities location")
-      .select("title prices boardBasis distanceToCenter distanceToBeach")
+      .select("title prices boardBasis distanceToCenter distanceToBeach destinations")
       .limit(50)
       .lean();
 

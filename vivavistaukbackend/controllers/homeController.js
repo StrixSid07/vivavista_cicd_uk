@@ -157,10 +157,14 @@ exports.getHomepageData = async (req, res) => {
   try {
     // Get featured deals (limit 21)
     const featuredDeals = await Deal.find({ isFeatured: true })
-      .select("title images isHotdeal isTopDeal destination prices days tag")
+      .select("title images isHotdeal isTopDeal destination destinations prices days tag")
       .populate({
         path: "destination",
         select: "name image", // Destination name & image only
+      })
+      .populate({
+        path: "destinations",
+        select: "name", // Populate multicenter destinations
       })
       .populate({
         path: "boardBasis",
@@ -180,11 +184,15 @@ exports.getHomepageData = async (req, res) => {
       .limit(3)
       .populate({
         path: "deals",
-        select: "title images isHotdeal isTopDeal destination prices days tag",
+        select: "title images isHotdeal isTopDeal destination destinations prices days tag",
         populate: [
           {
             path: "destination",
             select: "name image",
+          },
+          {
+            path: "destinations",
+            select: "name",
           },
           {
             path: "boardBasis",

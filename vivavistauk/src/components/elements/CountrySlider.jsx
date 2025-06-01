@@ -6,6 +6,30 @@ import { FaStar, FaStarHalfAlt, FaRegStar, FaCircle } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { CalendarDays, MapPin, Tag } from "lucide-react";
 
+// Helper function to format destination text with multicenter support
+const formatDestinationText = (primaryDestination, additionalDestinations) => {
+  if (!additionalDestinations || !additionalDestinations.length) return primaryDestination;
+  
+  // Get the name of the primary destination
+  let result = primaryDestination;
+  
+  // Add the multicenter destinations with comma separator
+  const multiDestinations = additionalDestinations.map(dest => dest.name).join(", ");
+  
+  if (multiDestinations) {
+    // Combine with comma and limit overall length
+    const combined = `${result}, ${multiDestinations}`;
+    
+    // If the combined string is too long, truncate it
+    if (combined.length > 20) {
+      return `${result}, ${multiDestinations.substring(0, 10)}...`;
+    }
+    return combined;
+  }
+  
+  return result;
+};
+
 const TravelPackages = ({ destinations }) => {
   const navigate = useNavigate();
   const handleViewDeals = (id) => {
@@ -242,7 +266,9 @@ const TravelPackages = ({ destinations }) => {
                           </div>
                           <div className="flex items-center gap-2 text-white text-sm font-medium drop-shadow">
                             <MapPin size={18} />
-                            <span>{destination.name}</span>
+                            <span className="truncate max-w-[8rem]" title={formatDestinationText(destination.name, deal.destinations)}>
+                              {formatDestinationText(destination.name, deal.destinations)}
+                            </span>
                           </div>
                         </div>
 

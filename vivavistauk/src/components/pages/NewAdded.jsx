@@ -162,6 +162,7 @@ const NewAdded = ({ data = [], loadingData }) => {
                       nextImage={() => nextImage(index)}
                       prevImage={() => prevImage(index)}
                       tag={property?.tag ?? ""}
+                      destinations={property?.destinations ?? []}
                     />
                   </div>
                 ))}

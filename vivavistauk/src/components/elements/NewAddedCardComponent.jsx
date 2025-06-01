@@ -30,11 +30,36 @@ const NewAddedCardComponent = ({
   nextImage,
   prevImage,
   tag,
+  destinations,
 }) => {
   const navigate = useNavigate();
 
   const handleViewDetails = () => {
     navigate(`/deals/${id}`);
+  };
+
+  // Function to format destinations for display
+  const formatDestinations = () => {
+    if (!destinations || !destinations.length) return location;
+    
+    // Start with the primary destination
+    let formattedLocation = location;
+    
+    // Add the multicenter destinations with comma separator
+    const multiDestinations = destinations.map(dest => dest.name).join(", ");
+    
+    if (multiDestinations) {
+      // Combine with comma and limit overall length
+      const combined = `${formattedLocation}, ${multiDestinations}`;
+      
+      // If the combined string is too long, truncate it
+      if (combined.length > 25) {
+        return `${formattedLocation}, ${multiDestinations.substring(0, 15)}...`;
+      }
+      return combined;
+    }
+    
+    return formattedLocation;
   };
 
   return (
@@ -117,7 +142,7 @@ const NewAddedCardComponent = ({
                         );
                       }
                     })
-                  : // if no rating, we’ll still show placeholder stars but in gray
+                  : // if no rating, we'll still show placeholder stars but in gray
                     Array.from({ length: 5 }, (_, i) => (
                       <FaRegStar key={i} className="text-sm text-gray-300" />
                     ))}
@@ -169,7 +194,9 @@ const NewAddedCardComponent = ({
             </div>
             <div className="flex items-center gap-2 text-sm text-deep-orange-500 font-medium">
               <MapPin size={18} />
-              <span>{location}</span>
+              <span className="truncate max-w-[10rem]" title={formatDestinations()}>
+                {formatDestinations()}
+              </span>
             </div>
           </div>
         </CardBody>

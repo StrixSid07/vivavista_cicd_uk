@@ -107,6 +107,7 @@ const FilterPage = () => {
           rooms: data.rooms,
           guests: data.guests,
           LowDeposite: data.LowDeposite,
+          destinations: data.destinations,
         });
 
         // Set images
@@ -280,7 +281,16 @@ const FilterPage = () => {
                 <div className="md:flex hidden flex-wrap gap-4 text-sm text-gray-600">
                   <div className="flex items-center gap-1">
                     <MapPin className="w-4 h-4 text-red-500" />
-                    {tripData.destination?.name || "Unknown Location"}
+                    {tripData.destinations && tripData.destinations.length > 0 ? (
+                      <span>
+                        {tripData.destination?.name}
+                        {tripData.destinations.length > 0 && (
+                          <>, {tripData.destinations.map(dest => dest.name).join(', ')}</>
+                        )}
+                      </span>
+                    ) : (
+                      tripData.destination?.name || "Unknown Location"
+                    )}
                   </div>
                   <div className="flex items-center gap-1">
                     <Tag className="w-4 h-4 text-purple-500" />
@@ -306,7 +316,16 @@ const FilterPage = () => {
                 <div className="grid grid-cols-1 md:hidden gap-4 md:-mt-8 mt-3">
                   <div className="flex items-center gap-2 text-base text-gray-600">
                     <MapPin className="w-6 h-7 text-red-500" />
-                    {tripData.destination?.name || "Unknown Location"}
+                    {tripData.destinations && tripData.destinations.length > 0 ? (
+                      <span>
+                        {tripData.destination?.name}
+                        {tripData.destinations.length > 0 && (
+                          <>, {tripData.destinations.map(dest => dest.name).join(', ')}</>
+                        )}
+                      </span>
+                    ) : (
+                      tripData.destination?.name || "Unknown Location"
+                    )}
                   </div>
                   <div className="flex items-center gap-2 text-base text-gray-600">
                     <CalendarCheck className="w-6 h-7 text-green-600" />
