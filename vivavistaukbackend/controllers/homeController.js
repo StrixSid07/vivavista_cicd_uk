@@ -175,8 +175,8 @@ exports.getHomepageData = async (req, res) => {
 
     // Get destinations (limit 6), with associated deals
     const destinations = await Destination.find({ isPopular: true })
-      .select("name image isPopular createdAt")
-      .sort({ createdAt: -1 }) 
+      .select("name image isPopular updatedAt")
+      .sort({ updatedAt: -1 })
       .limit(3)
       .populate({
         path: "deals",
