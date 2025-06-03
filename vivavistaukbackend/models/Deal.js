@@ -45,12 +45,11 @@ const DealSchema = new mongoose.Schema(
     prices: [
       {
         priceswitch: { type: Boolean, default: false },
-        country: { type: String, required: true },
+        country: { type: String, required: true, default: "UK" },
         airport: [{ type: mongoose.Schema.Types.ObjectId, ref: "Airport" }],
         hotel: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "Hotel",
-          required: true,
         },
         startdate: { type: Date, required: true },
         enddate: { type: Date, required: true },

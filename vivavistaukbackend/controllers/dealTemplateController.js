@@ -1,13 +1,13 @@
 const ExcelJS = require("exceljs");
-const Deal = require("../models/Deal");
-const Hotel = require("../models/Hotel");
-const Destination = require("../models/Destination");
-const Holiday = require("../models/Holiday");
-const BoardBasis = require("../models/BoardBasis");
-const Airport = require("../models/Airport");
 const mongoose = require("mongoose");
 const XLSX = require("xlsx");
 const fs = require("fs");
+const Deal = require("../models/Deal");
+const Destination = require("../models/Destination");
+const Holiday = require("../models/Holiday");
+const Hotel = require("../models/Hotel");
+const BoardBasis = require("../models/BoardBasis");
+const Airport = require("../models/Airport");
 
 // Helper: normalize strings
 function normalize(str) {
@@ -1096,3 +1096,562 @@ exports.readAndInsertExcel = async (req, res) => {
 function isValidObjectId(id) {
   return typeof id === "string" && mongoose.Types.ObjectId.isValid(id);
 }
+
+exports.generatePriceOnlyTemplate = async (req, res) => {
+  try {
+    const workbook = new ExcelJS.Workbook();
+    const mainSheet = workbook.addWorksheet("PriceOnly");
+    const refSheet = workbook.addWorksheet("References");
+    refSheet.state = "veryHidden";
+
+    // Fetch reference data for airports only
+    const airports = await Airport.find().lean();
+
+    // Fill References sheet
+    const airportOffset = 2;
+    refSheet.getCell(`A${airportOffset}`).value = "AirportCode";
+    refSheet.getCell(`B${airportOffset}`).value = "AirportId";
+    airports.forEach((a, i) => {
+      refSheet.getCell(`A${airportOffset + i + 1}`).value = a.code;
+      refSheet.getCell(`B${airportOffset + i + 1}`).value = a._id.toString();
+    });
+
+    // Setup Main Sheet Columns with only the necessary fields
+    mainSheet.columns = [
+      { header: "Airport Code", key: "airportCode", width: 15 },
+      { header: "Airport ID", key: "airportId", width: 36, hidden: true },
+      {
+        header: "Start Date",
+        key: "startdate",
+        width: 15,
+        style: { numFmt: "dd/mm/yyyy" },
+      },
+      {
+        header: "End Date",
+        key: "enddate",
+        width: 15,
+        style: { numFmt: "dd/mm/yyyy" },
+      },
+      { header: "Price", key: "price", width: 10 },
+      { header: "Outbound Flight Details", key: "outbound", width: 30 },
+      { header: "Return Flight Details", key: "returnFlight", width: 30 },
+    ];
+
+    // Style the header row
+    const headerRow = mainSheet.getRow(1);
+    headerRow.font = { bold: true };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFD3D3D3' }
+    };
+
+    // Create a source range for validation that can be used for the entire column
+    const airportCodesRange = `'References'!$A$${airportOffset + 1}:$A$${airportOffset + airports.length}`;
+
+    // Pre-create rows (5000) with validation but leave all cells empty
+    const totalRows = 5000;
+    
+    // Generate rows in smaller chunks to avoid memory issues
+    const chunkSize = 50;
+    for (let chunkStart = 2; chunkStart <= totalRows; chunkStart += chunkSize) {
+      const chunkEnd = Math.min(chunkStart + chunkSize - 1, totalRows);
+      
+      // Process each row in this chunk
+      for (let i = chunkStart; i <= chunkEnd; i++) {
+        // Airport Code dropdown
+        mainSheet.getCell(`A${i}`).dataValidation = {
+          type: "list",
+          allowBlank: true,
+          formulae: [airportCodesRange],
+        };
+
+        // B column will be populated by formula when user selects an airport code
+        mainSheet.getCell(`B${i}`).value = {
+          formula: `IF(A${i}="","",VLOOKUP(A${i},'References'!$A$${airportOffset + 1}:$B$${airportOffset + airports.length},2,FALSE))`
+        };
+
+        // Start Date + End Date validations
+        ["C", "D"].forEach((col) => {
+          mainSheet.getCell(`${col}${i}`).dataValidation = {
+            type: "date",
+            operator: "greaterThan", 
+            formulae: [new Date(1900, 0, 1)],
+            showErrorMessage: true,
+            errorTitle: "Invalid Date",
+            error: "Please enter a valid date",
+            errorStyle: "stop",
+            allowBlank: true,
+          };
+        });
+
+        // Price validation
+        mainSheet.getCell(`E${i}`).dataValidation = {
+          type: "decimal",
+          operator: "greaterThan",
+          formulae: [0],
+          showErrorMessage: true,
+          error: "Price must be a positive number",
+          errorStyle: "stop",
+          allowBlank: true,
+        };
+      }
+    }
+
+    res.status(200).set({
+      "Content-Type":
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": `attachment; filename="price_only_template.xlsx"`,
+    });
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error("Error generating price only template:", error);
+    res.status(500).json({ message: "Failed to generate template" });
+  }
+};
+
+exports.uploadPriceOnly = async (req, res) => {
+  try {
+    if (!req.file || !req.file.buffer) {
+      return res
+        .status(400)
+        .json({ success: false, message: "No file uploaded" });
+    }
+
+    // Get the selected deal ID from the request body
+    const { dealId } = req.body;
+    
+    if (!dealId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "No deal selected" });
+    }
+
+    // Find the selected deal
+    const deal = await Deal.findById(dealId);
+    if (!deal) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Selected deal not found" });
+    }
+
+    // Store original deal _id to ensure we're updating the same deal
+    const originalDealId = deal._id.toString();
+    console.log(`Processing upload for original deal ID: ${originalDealId}`);
+
+    // Get all airports for code-to-id mapping
+    const airports = await Airport.find().lean();
+    
+    // Log all airports for debugging
+    console.log("All available airports:");
+    airports.forEach(airport => {
+      console.log(`- Airport: ${airport.name}, Code: ${airport.code}, ID: ${airport._id}`);
+    });
+    
+    // Create different maps for efficient lookup
+    const airportCodeMap = {};     // lookup by code
+    const airportNameMap = {};     // lookup by name
+    const airportIdMap = {};       // lookup by ID
+    
+    // Log how many airports were found
+    console.log(`Found ${airports.length} airports in the database`);
+    
+    // Create mappings for both code and name to ID
+    airports.forEach(airport => {
+      // Store the full airport object in each map for easier access
+      if (airport.code) {
+        const normalizedCode = airport.code.trim().toUpperCase();
+        airportCodeMap[normalizedCode] = airport;
+      }
+      
+      if (airport.name) {
+        const normalizedName = airport.name.trim().toLowerCase();
+        airportNameMap[normalizedName] = airport;
+      }
+      
+      if (airport._id) {
+        airportIdMap[airport._id.toString()] = airport;
+      }
+    });
+    
+    console.log(`Created mapping for ${Object.keys(airportCodeMap).length} airport codes and ${Object.keys(airportNameMap).length} airport names`);
+
+    // Read the uploaded Excel file
+    const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    
+    // Get only non-empty rows from the Excel file
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" })
+      .filter(row => {
+        // Check if row has any non-empty values for key fields
+        return row["Airport Code"] || 
+               row["Airport ID"] || 
+               row["Price"] || 
+               row["Start Date"] || 
+               row["End Date"];
+      });
+
+    console.log(`Found ${jsonData.length} non-empty rows in the uploaded file`);
+
+    // Log sample data from first few rows for debugging
+    if (jsonData.length > 0) {
+      console.log("Sample data from first row:");
+      console.log(JSON.stringify(jsonData[0]));
+    }
+
+    if (!jsonData.length) {
+      return res
+        .status(400)
+        .json({ success: false, message: "No valid data found in Excel file" });
+    }
+
+    // Create a map of existing prices to check for duplicates
+    // Key format: "airportId_startDate_endDate"
+    const existingPricesMap = new Map();
+    
+    if (deal.prices && deal.prices.length > 0) {
+      deal.prices.forEach((price, index) => {
+        if (price.airport && price.airport.length > 0 && price.startdate && price.enddate) {
+          const airportId = price.airport[0].toString();
+          const startDate = new Date(price.startdate).toISOString().split('T')[0];
+          const endDate = new Date(price.enddate).toISOString().split('T')[0];
+          
+          const key = `${airportId}_${startDate}_${endDate}`;
+          existingPricesMap.set(key, index);
+        }
+      });
+    }
+    
+    console.log(`Found ${existingPricesMap.size} existing prices in the deal`);
+
+    // Make a copy of deal prices to accumulate changes, instead of modifying directly
+    // This prevents issues with concurrent modifications that might cause duplicates
+    const updatedPrices = [...(deal.prices || [])];
+
+    // Prepare for tracking success and errors
+    let addedCount = 0;
+    let updatedCount = 0;
+    let skippedCount = 0;
+    let errorCount = 0;
+    const errors = [];
+    const duplicates = [];
+    
+    // Track processed combinations to avoid duplicates within the upload file
+    const processedCombinations = new Set();
+    
+    // Process in batches to handle large datasets
+    const batchSize = 50;
+    const totalRows = jsonData.length;
+    
+    for (let i = 0; i < totalRows; i += batchSize) {
+      const batch = jsonData.slice(i, i + batchSize);
+      
+      // Process each row in the current batch
+      for (const row of batch) {
+        try {
+          const airportId = row["Airport ID"] || "";
+          let airportCode = row["Airport Code"] || "";
+          const price = Number(row["Price"]) || 0;
+          const startdate = row["Start Date"];
+          const enddate = row["End Date"];
+          const outbound = row["Outbound Flight Details"] || "";
+          const returnFlight = row["Return Flight Details"] || "";
+          
+          console.log(`Processing row with Airport Code: ${airportCode}, Airport ID: ${airportId}`);
+          
+          // Skip completely empty rows
+          if (!airportId && !airportCode && !price && !startdate && !enddate) {
+            continue;
+          }
+          
+          // Check required fields
+          if (!airportId && !airportCode) {
+            errors.push({
+              row: JSON.stringify(row),
+              error: "Missing airport information"
+            });
+            errorCount++;
+            continue;
+          }
+          
+          if (!price) {
+            errors.push({
+              row: JSON.stringify(row),
+              error: "Missing price"
+            });
+            errorCount++;
+            continue;
+          }
+          
+          if (!startdate || !enddate) {
+            errors.push({
+              row: JSON.stringify(row),
+              error: "Missing start or end date"
+            });
+            errorCount++;
+            continue;
+          }
+
+          // Find airport by code or ID with enhanced fallback logic
+          let resolvedAirportId = null;
+          let resolvedAirport = null;
+          
+          // First try to use the direct ID if provided
+          if (airportId && mongoose.Types.ObjectId.isValid(airportId)) {
+            console.log(`Trying to resolve by ID: ${airportId}`);
+            // Check if this ID exists in our airport database
+            resolvedAirport = airportIdMap[airportId];
+            
+            if (resolvedAirport) {
+              resolvedAirportId = airportId;
+              console.log(`Found airport by ID: ${resolvedAirport.name} (${resolvedAirport.code})`);
+            } else {
+              console.log(`Warning: Airport ID ${airportId} not found in database`);
+            }
+          }
+          
+          // If ID lookup failed, try by code
+          if (!resolvedAirportId && airportCode) {
+            // Normalize the code by trimming and converting to uppercase
+            const normalizedCode = airportCode.trim().toUpperCase();
+            console.log(`Trying to resolve by code: ${normalizedCode}`);
+            
+            resolvedAirport = airportCodeMap[normalizedCode];
+            
+            if (resolvedAirport) {
+              resolvedAirportId = resolvedAirport._id.toString();
+              console.log(`Found airport by code: ${resolvedAirport.name} (${resolvedAirport.code})`);
+            } else {
+              console.log(`Airport code ${normalizedCode} not found in map`);
+              
+              // Try to lookup by name as fallback
+              console.log(`Trying as name...`);
+              const normalizedName = airportCode.trim().toLowerCase();
+              resolvedAirport = airportNameMap[normalizedName];
+              
+              if (resolvedAirport) {
+                resolvedAirportId = resolvedAirport._id.toString();
+                console.log(`Found airport by name: ${resolvedAirport.name} (${resolvedAirport.code})`);
+              } else {
+                console.log(`Airport name ${normalizedName} not found in map`);
+                
+                // Try a direct database lookup with multiple variations
+                console.log(`Trying direct DB lookup...`);
+                try {
+                  const airport = await Airport.findOne({
+                    $or: [
+                      { code: normalizedCode },
+                      { code: airportCode },
+                      { name: new RegExp(`^${airportCode}$`, 'i') }, // Exact match case-insensitive
+                      { name: new RegExp(airportCode, 'i') }         // Partial match case-insensitive
+                    ]
+                  });
+                  
+                  if (airport) {
+                    resolvedAirport = airport;
+                    resolvedAirportId = airport._id.toString();
+                    console.log(`Found airport via direct DB lookup: ${airport.name} (${airport.code})`);
+                  } else {
+                    // Last resort: check if the code looks like an IATA code (3 letters)
+                    if (/^[A-Z]{3}$/i.test(airportCode.trim())) {
+                      // Try to find any airport with this code pattern
+                      const airportByPattern = await Airport.findOne({
+                        code: new RegExp(`^${airportCode.trim()}$`, 'i')
+                      });
+                      
+                      if (airportByPattern) {
+                        resolvedAirport = airportByPattern;
+                        resolvedAirportId = airportByPattern._id.toString();
+                        console.log(`Found airport by IATA pattern: ${airportByPattern.name} (${airportByPattern.code})`);
+                      }
+                    }
+                  }
+                } catch (dbErr) {
+                  console.error(`Error during direct DB lookup: ${dbErr}`);
+                }
+              }
+            }
+          }
+          
+          // If we still don't have an airport ID, report the error
+          if (!resolvedAirportId) {
+            const errorMsg = `Airport with code/name "${airportCode}" not found in the system`;
+            console.error(errorMsg);
+            errors.push({
+              row: JSON.stringify(row),
+              error: errorMsg
+            });
+            errorCount++;
+            continue;
+          }
+          
+          console.log(`Successfully resolved airport: ID=${resolvedAirportId}, Name=${resolvedAirport?.name}, Code=${resolvedAirport?.code}`);
+
+          // Convert dates properly
+          const startDate = excelDateToJSDate(startdate);
+          const endDate = excelDateToJSDate(enddate);
+          
+          if (!startDate || !endDate || isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            errors.push({
+              row: JSON.stringify(row),
+              error: "Invalid date format"
+            });
+            errorCount++;
+            continue;
+          }
+          
+          // Format dates for comparison
+          const formattedStartDate = startDate.toISOString().split('T')[0];
+          const formattedEndDate = endDate.toISOString().split('T')[0];
+          
+          // Check for duplicates within the current upload (different rows with same airport/dates)
+          const currentKey = `${resolvedAirportId}_${formattedStartDate}_${formattedEndDate}`;
+          
+          if (processedCombinations.has(currentKey)) {
+            duplicates.push({
+              row: JSON.stringify(row),
+              info: `Duplicate entry in upload file: Airport ${airportCode}, Start: ${formattedStartDate}, End: ${formattedEndDate}`
+            });
+            skippedCount++;
+            continue;
+          }
+          
+          // Mark this combination as processed
+          processedCombinations.add(currentKey);
+
+          // Create the price object with all required fields
+          const priceObj = {
+            country: "UK", // Default to UK per requirements
+            airport: [new mongoose.Types.ObjectId(resolvedAirportId)],
+            // Hotel is now optional - we'll add it if deal has hotels, otherwise omit
+            ...(deal.hotels && deal.hotels.length > 0 ? { hotel: new mongoose.Types.ObjectId(deal.hotels[0]) } : {}),
+            startdate: startDate,
+            enddate: endDate,
+            price: price,
+            flightDetails: {
+              outbound: {
+                departureTime: outbound.includes('Departure:') ? outbound.split('Departure:')[1]?.trim() : "",
+                arrivalTime: outbound.includes('Arrival:') ? outbound.split('Arrival:')[1]?.trim() : "",
+                airline: outbound.includes('Airline:') ? outbound.split('Airline:')[1]?.trim() : "",
+                flightNumber: outbound.includes('Flight:') ? outbound.split('Flight:')[1]?.trim() : "",
+              },
+              returnFlight: {
+                departureTime: returnFlight.includes('Departure:') ? returnFlight.split('Departure:')[1]?.trim() : "",
+                arrivalTime: returnFlight.includes('Arrival:') ? returnFlight.split('Arrival:')[1]?.trim() : "",
+                airline: returnFlight.includes('Airline:') ? returnFlight.split('Airline:')[1]?.trim() : "",
+                flightNumber: returnFlight.includes('Flight:') ? returnFlight.split('Flight:')[1]?.trim() : "",
+              }
+            }
+          };
+
+          // Double-check airport is valid before saving
+          if (!mongoose.Types.ObjectId.isValid(resolvedAirportId)) {
+            console.error(`Invalid airport ID format: ${resolvedAirportId}`);
+            errors.push({
+              row: JSON.stringify(row),
+              error: `Invalid airport ID format: ${resolvedAirportId}`
+            });
+            errorCount++;
+            continue;
+          }
+
+          // Check if a price with this exact combination already exists using our map
+          const existingPriceIndex = existingPricesMap.get(currentKey);
+          
+          if (existingPriceIndex !== undefined) {
+            // Update existing price in our copy of prices array
+            updatedPrices[existingPriceIndex].price = priceObj.price;
+            updatedPrices[existingPriceIndex].flightDetails = priceObj.flightDetails;
+            
+            // Ensure country is set
+            if (!updatedPrices[existingPriceIndex].country) {
+              updatedPrices[existingPriceIndex].country = "UK";
+            }
+            
+            updatedCount++;
+            console.log(`Updated existing price at index ${existingPriceIndex}: ${currentKey}`);
+          } else {
+            // Add new price to our copy of prices array
+            updatedPrices.push(priceObj);
+            // Update our map with the new price
+            existingPricesMap.set(currentKey, updatedPrices.length - 1);
+            addedCount++;
+            console.log(`Added new price: ${currentKey}`);
+          }
+        } catch (err) {
+          console.error("Error processing row:", err);
+          errors.push({
+            row: JSON.stringify(row),
+            error: err.message
+          });
+          errorCount++;
+        }
+      }
+      
+      // Don't save after each batch anymore - we'll save only once at the end
+      // to prevent creating multiple copies of the deal
+      if (i + batchSize < totalRows) {
+        console.log(`Processed batch. Progress: ${i + batchSize}/${totalRows} rows processed`);
+      }
+    }
+
+    // Final save ONLY ONCE after processing all batches
+    try {
+      // Verify we're still working with the same deal
+      const currentDeal = await Deal.findById(originalDealId);
+      
+      if (!currentDeal) {
+        throw new Error(`Original deal ${originalDealId} no longer exists in the database`);
+      }
+      
+      // Replace the prices array with our updated version
+      currentDeal.prices = updatedPrices;
+      
+      // Save using findByIdAndUpdate to ensure atomic update
+      const updatedDeal = await Deal.findByIdAndUpdate(
+        originalDealId,
+        { $set: { prices: updatedPrices } },
+        { new: true, runValidators: true }
+      );
+      
+      if (!updatedDeal) {
+        throw new Error(`Failed to update deal ${originalDealId}`);
+      }
+      
+      console.log(`Final save complete. Total processed: Added=${addedCount}, Updated=${updatedCount}, Skipped=${skippedCount}, Errors=${errorCount}`);
+    } catch (saveError) {
+      console.error("Price upload error:", saveError);
+      return res.status(500).json({
+        success: false,
+        message: "Error saving prices to the deal",
+        error: saveError.message
+      });
+    }
+
+    // Combine errors and duplicates for the response
+    const allIssues = [...errors];
+    if (duplicates.length > 0) {
+      allIssues.push(...duplicates);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Price upload completed: ${addedCount} added, ${updatedCount} updated, ${skippedCount} skipped (duplicates), ${errorCount} errors`,
+      addedCount,
+      updatedCount,
+      skippedCount,
+      errorCount,
+      issues: allIssues.length > 0 && allIssues.length <= 20 ? allIssues : 
+             (allIssues.length > 20 ? allIssues.slice(0, 20).concat([{row: "...", error: `${allIssues.length - 20} more issues not shown`}]) : undefined)
+    });
+  } catch (err) {
+    console.error("Price upload error:", err);
+    return res.status(500).json({ 
+      success: false, 
+      message: "Server error during price upload",
+      error: err.message
+    });
+  }
+};

@@ -8,6 +8,8 @@ const {
   bulkUploadDeals,
   bulkUpdateDealsByExcel,
   readAndInsertExcel,
+  generatePriceOnlyTemplate,
+  uploadPriceOnly
 } = require("../controllers/dealTemplateController");
 
 const multer = require("multer");
@@ -27,6 +29,10 @@ router.post("/bulk-update", upload.single("file"), updateDealsFromExcel);
 
 // Route to generate Excel template
 router.get("/price-template", generateDealPricesTemplate);
+// Route to generate price-only template (without deal info)
+router.get("/price-only-template", generatePriceOnlyTemplate);
+// Route to upload price data for a specific deal
+router.post("/upload-price-only", upload.single("file"), uploadPriceOnly);
 // Route to upload deals in bulk
 router.post("/bulk-upload-price", upload.single("file"), readAndInsertExcel);
 router.post("/bulk-upload-update", upload.single("file"), bulkUpdateDealsByExcel);

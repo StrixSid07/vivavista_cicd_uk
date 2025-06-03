@@ -2014,13 +2014,25 @@ export const ManageDeals = () => {
                               <strong>Airport:</strong>{" "}
                               {price.airport && price.airport.length > 0
                                 ? price.airport
-                                    .map((airportId) => {
-                                      const airportObj = airports.find(
-                                        (a) => a._id === airportId,
-                                      );
-                                      return airportObj
-                                        ? `${airportObj.name} (${airportObj.code})`
-                                        : "Unknown Airport";
+                                    .map((airport) => {
+                                      // Check if airport is already populated (has name/code properties)
+                                      if (typeof airport === "object" && airport.name) {
+                                        return `${airport.name} (${airport.code || "N/A"})`;
+                                      }
+                                      // If it's just an ObjectId, try to find it in our airports list
+                                      else if (typeof airport === "string" || airport._id) {
+                                        const airportId = typeof airport === "string" ? airport : airport._id;
+                                        const airportObj = airports.find(
+                                          (a) => a._id === airportId,
+                                        );
+                                        return airportObj
+                                          ? `${airportObj.name} (${airportObj.code})`
+                                          : `Unknown Airport (${airportId})`;
+                                      }
+                                      // Fallback for any other case
+                                      else {
+                                        return "Unknown Airport";
+                                      }
                                     })
                                     .join(", ")
                                 : "N/A"}
