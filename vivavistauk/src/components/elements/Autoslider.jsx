@@ -9,6 +9,49 @@ const AutoSlider = () => {
   const [focused, setFocused] = useState(false);
   const [slides, setSlides] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [windowSize, setWindowSize] = useState({
+    width: typeof window !== 'undefined' ? window.innerWidth : 0,
+    height: typeof window !== 'undefined' ? window.innerHeight : 0,
+  });
+
+  useEffect(() => {
+    // Window resize handler
+    const handleResize = () => {
+      setWindowSize({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+
+    // Add event listener
+    window.addEventListener("resize", handleResize);
+    
+    // Call handler right away so state gets updated with initial window size
+    handleResize();
+    
+    // Remove event listener on cleanup
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Get slide dimensions based on window size
+  const getSlideSize = () => {
+    if (windowSize.width < 640) {
+      return {
+        width: Math.min(320, windowSize.width - 32) + "px", // account for padding
+        height: "220px",
+      };
+    } else if (windowSize.width < 768) {
+      return {
+        width: "400px",
+        height: "300px",
+      };
+    } else {
+      return {
+        width: "800px",
+        height: "500px",
+      };
+    }
+  };
 
   useEffect(() => {
     // Fetch autoslider data from API
@@ -106,7 +149,7 @@ const AutoSlider = () => {
 
   return (
     <div
-      className="relative w-full h-[50vh] md:h-[90vh] overflow-hidden bg-white px-4 md:px-10"
+      className="relative w-full h-[400px] sm:h-[450px] md:h-[90vh] overflow-hidden bg-white px-4 md:px-10"
       style={{
         backgroundImage: `url(${water})`,
         backgroundSize: "cover",
@@ -124,7 +167,7 @@ const AutoSlider = () => {
             )} transform`}
           >
             <div
-              className={`relative w-full max-w-4xl md:max-w-3xl sm:max-w-sm h-auto rounded-xl overflow-hidden shadow-xl 
+              className={`relative w-full overflow-hidden rounded-xl shadow-xl 
           transition-transform duration-500 
           ${
             index === currentIndex && focused
@@ -132,21 +175,29 @@ const AutoSlider = () => {
               : ""
           }`}
               onClick={handleFocus}
+              style={{
+                width: getSlideSize().width,
+                height: getSlideSize().height,
+                maxWidth: "90vw",
+                overflow: "hidden"
+              }}
             >
-              <img
-                src={slide.image}
-                alt={slide.title}
-                className="w-full h-[250px] md:w-[800px] md:h-[500px] object-cover cursor-pointer transition-all duration-500 ease-in-out group-hover:scale-105" // Adjusted for mobile
-              />
-              <div className="absolute inset-0 md:w-1/2 w-full bg-gradient-to-r from-black/60 to-white/5 p-4 md:p-8 flex flex-col justify-center text-white">
-                <h2 className="text-3xl md:text-4xl sm:text-2xl font-bold transition-all duration-500 ease-in-out group-hover:scale-95">
-                  {" "}
-                  {/* Adjusted for mobile */}
+              <div className="w-full h-full overflow-hidden">
+                <img
+                  src={slide.image}
+                  alt={slide.title}
+                  className="w-full h-full object-cover cursor-pointer transition-all duration-700 ease-in-out transform scale-110 group-hover:scale-125"
+                  style={{
+                    objectFit: "cover",
+                    objectPosition: "center"
+                  }}
+                />
+              </div>
+              <div className="absolute inset-0 md:w-1/2 w-full bg-gradient-to-r from-black/60 to-white/5 p-2 sm:p-4 md:p-8 flex flex-col justify-center text-white">
+                <h2 className="text-lg sm:text-xl md:text-3xl font-bold transition-all duration-500 ease-in-out group-hover:scale-95 truncate">
                   {slide.title}
                 </h2>
-                <p className="mt-2 text-lg w-full md:text-base sm:text-sm transition-all duration-500 ease-in-out group-hover:scale-95">
-                  {" "}
-                  {/* Adjusted for mobile */}
+                <p className="mt-1 sm:mt-2 text-xs sm:text-sm md:text-base w-full transition-all duration-500 ease-in-out group-hover:scale-95 line-clamp-2 sm:line-clamp-3 overflow-hidden text-ellipsis">
                   {slide.description}
                 </p>
               </div>
