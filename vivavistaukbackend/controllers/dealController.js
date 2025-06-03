@@ -260,115 +260,115 @@ const getAllDeals = async (req, res) => {
       search,
     } = req.query;
 
-    let query = {};
+    // 🧠 Helper function to build the query object
+    const buildQuery = (useAirport, useDestination, useDate, useRoomGuest) => {
+      let query = {};
 
-    // ✅ Filter by Country
-    if (country) query.availableCountries = country;
-    if (destination) query["destination"] = destination;
-    // ✅ Filter by Airport
-if (airport) {
-  const airportArray = Array.isArray(airport) ? airport : [airport];
+      if (country) query.availableCountries = country;
 
-  // Step 1: Find matching airports by code
-  const airportDocs = await Airport.find({
-    code: { $in: airportArray },
-  }).select("_id");
+      // Destination filter
+      if (useDestination && destination) query.destination = destination;
 
-  // Step 2: Extract the _id values
-  const airportIds = airportDocs.map((doc) => doc._id);
+      // Price range
+      if (minPrice || maxPrice) {
+        query["prices.price"] = {};
+        if (minPrice) query["prices.price"].$gte = Number(minPrice);
+        if (maxPrice) query["prices.price"].$lte = Number(maxPrice);
+      }
 
-  // Step 3: Apply filter
-  query["prices"] = {
-    $elemMatch: {
-      airport: {
-        $in: airportIds,
-      },
-    },
-  };
-}
+      // Board basis
+      if (boardBasis) query.boardBasis = boardBasis;
 
-    // ✅ Filter by Date Range
-    if (fromdate && todate) {
-      query["prices"] = {
-        $elemMatch: {
-          startdate: { $gte: new Date(fromdate), $lte: new Date(todate) },
-        },
-      };
+      // Rating
+      if (rating) query["hotels.tripAdvisorRating"] = { $gte: Number(rating) };
+
+      // Facilities
+      if (holidayType) query["hotels.facilities"] = { $in: holidayType.split(",") };
+      if (facilities) query["hotels.facilities"] = { $all: facilities.split(",") };
+
+      // Hotel name search
+      if (search) query["hotels.name"] = { $regex: search, $options: "i" };
+
+      // Room & guest filters
+      if (useRoomGuest && rooms) query.rooms = Number(rooms);
+      if (useRoomGuest && guests) query.guests = Number(guests);
+
+      // ✅ Airport + Date filter in $elemMatch
+      if (useAirport || useDate) {
+        const priceMatch = {};
+        if (useAirport && airport) {
+          const airportArray = Array.isArray(airport) ? airport : [airport];
+          priceMatch.airport = { $in: airportArray };
+        }
+        if (useDate && fromdate && todate) {
+          priceMatch.startdate = {
+            $gte: new Date(fromdate),
+            $lte: new Date(todate),
+          };
+        }
+        if (Object.keys(priceMatch).length > 0) {
+          query["prices"] = { $elemMatch: priceMatch };
+        }
+      }
+
+      return query;
+    };
+
+    // 🧠 Helper to fetch deals using a query
+    const getDeals = async (query) => {
+      return await Deal.find(query)
+        .populate("destination")
+        .populate("destinations")
+        .populate("boardBasis", "name")
+        .populate("hotels", "name tripAdvisorRating facilities location images")
+        .populate({
+          path: "prices.hotel",
+          select: "name tripAdvisorRating tripAdvisorReviews",
+        })
+        .select(
+          "title tag priceswitch boardBasis LowDeposite availableCountries description rooms guests prices distanceToCenter distanceToBeach days images isTopDeal isHotdeal isFeatured holidaycategories itinerary whatsIncluded exclusiveAdditions termsAndConditions destinations"
+        )
+        .sort(
+          sort === "highest-price"
+            ? { "prices.price": -1 }
+            : sort === "best-rating"
+            ? { "hotels.tripAdvisorRating": -1 }
+            : { "prices.price": 1 }
+        )
+        .limit(50)
+        .lean();
+    };
+
+    // 🚀 Filter Priority Cases (from strictest to fallback)
+    const filterCases = [
+      { useAirport: true, useDestination: true, useDate: true, useRoomGuest: true }, // Strict match
+      { useAirport: true, useDestination: true, useDate: true, useRoomGuest: false }, // Relax rooms/guests
+      { useAirport: true, useDestination: true, useDate: false, useRoomGuest: true }, // Relax date
+      { useAirport: false, useDestination: true, useDate: true, useRoomGuest: true }, // Relax airport
+      { useAirport: false, useDestination: true, useDate: false, useRoomGuest: true }, // Relax airport + date
+      { useAirport: false, useDestination: false, useDate: true, useRoomGuest: true }, // Relax destination
+      { useAirport: false, useDestination: false, useDate: false, useRoomGuest: true }, // Only room match
+    ];
+
+    let deals = [];
+    let usedCase = -1;
+
+    for (let i = 0; i < filterCases.length; i++) {
+      const filter = filterCases[i];
+      const query = buildQuery(
+        filter.useAirport,
+        filter.useDestination,
+        filter.useDate,
+        filter.useRoomGuest
+      );
+
+      deals = await getDeals(query);
+
+      if (deals.length) {
+        usedCase = i + 1;
+        break;
+      }
     }
-    // ✅ Filter by Price Range
-    if (minPrice || maxPrice) {
-      query["prices.price"] = {};
-      if (minPrice) query["prices.price"].$gte = Number(minPrice);
-      if (maxPrice) query["prices.price"].$lte = Number(maxPrice);
-    }
-
-    // ✅ Filter by Board Basis
-    if (boardBasis) query.boardBasis = boardBasis;
-
-    // ✅ Filter by Rating
-    if (rating) query["hotels.tripAdvisorRating"] = { $gte: Number(rating) };
-
-    // ✅ Filter by Holiday Type
-    if (holidayType)
-      query["hotels.facilities"] = { $in: holidayType.split(",") };
-
-    // ✅ Filter by Facilities
-    if (facilities)
-      query["hotels.facilities"] = { $all: facilities.split(",") };
-
-    // ✅ Search by Hotel Name
-    if (search) query["hotels.name"] = { $regex: search, $options: "i" };
-
-    // ✅ Filter by Rooms & Guests
-    if (rooms) query.rooms = Number(rooms);
-    if (guests) query.guests = Number(guests);
-
-    // ✅ Apply Sorting
-    // let sortOption = {};
-    // if (sort === "lowest-price") sortOption["prices.price"] = 1;
-    // if (sort === "highest-price") sortOption["prices.price"] = -1;
-    // if (sort === "best-rating") sortOption["hotels.tripAdvisorRating"] = -1;
-    let sortOption = { "prices.price": 1 };
-
-    if (sort === "highest-price") {
-      sortOption = { "prices.price": -1 };
-    } else if (sort === "best-rating") {
-      sortOption = { "hotels.tripAdvisorRating": -1 };
-    }
-
-    // ✅ Fetch Deals with Filters & Sorting
-    let deals = await Deal.find(query)
-      .populate("destination")
-      .populate("destinations")
-      .populate("boardBasis", "name")
-      .populate("hotels", "name tripAdvisorRating facilities location images")
-      .populate({
-        path: "prices.hotel",
-        select: "name tripAdvisorRating tripAdvisorReviews",
-      })
-      .select(
-        "title tag priceswitch boardBasis LowDeposite availableCountries description rooms guests prices distanceToCenter distanceToBeach days images isTopDeal isHotdeal isFeatured holidaycategories itinerary whatsIncluded exclusiveAdditions termsAndConditions destinations"
-      )
-      .sort(sortOption)
-      .limit(50) // Limit to 50 results for performance
-      .lean();
-   if (!deals.length) {
-     deals = await Deal.find({})
-       .populate("destination")
-       .populate("destinations")
-       .populate("boardBasis", "name")
-       .populate("hotels", "name tripAdvisorRating facilities location images")
-       .populate({
-         path: "prices.hotel",
-         select: "name tripAdvisorRating tripAdvisorReviews",
-       })
-       .select(
-         "title tag priceswitch boardBasis LowDeposite availableCountries description rooms guests prices distanceToCenter distanceToBeach days images isTopDeal isHotdeal isFeatured holidaycategories itinerary whatsIncluded exclusiveAdditions termsAndConditions destinations"
-       )
-       .sort(sortOption)
-       .limit(50)
-       .lean();
-   }
     console.log("🚀 ~ getAllDeals ~ deals:", deals);
     // ✅ Filter flight details based on the selected airport
     // deals = deals
