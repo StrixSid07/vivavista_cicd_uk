@@ -444,7 +444,7 @@ useEffect(() => {
           </Typography>
           <Typography
             variant="h5"
-            className="font-bold tracking-wide bg-transparent bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-indigo-600 customfontstitle total-price-display"
+            className="font-bold tracking-wide bg-transparent bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-indigo-600 customfontstitle"
           >
             £{totalPrice}
           </Typography>
