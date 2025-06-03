@@ -83,7 +83,7 @@ const SearchBar = ({ roomOptions }) => {
         >
           <option value="">Select</option>
           {airports.map((airport) => (
-            <option key={airport._id} value={airport.code}>
+            <option key={airport._id} value={airport._id}>
               {airport.name}
             </option>
           ))}
