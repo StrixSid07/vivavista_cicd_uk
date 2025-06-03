@@ -83,6 +83,7 @@ app.use((req, res, next) => {
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/hotels", require("./routes/hotelRoutes"));
 app.use("/api/deals", require("./routes/dealRoutes"));
+app.use("/api/prices", require("./routes/priceRoutes"));
 app.use("/api/bookings", require("./routes/bookingRoutes"));
 app.use("/api/misc", require("./routes/miscRoutes"));
 app.use("/api/reports", require("./routes/reportRoutes"));

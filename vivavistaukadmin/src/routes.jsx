@@ -16,6 +16,7 @@ import {
   UserIcon,
   VideoCameraIcon,
   FilmIcon,
+  CurrencyDollarIcon,
 } from "@heroicons/react/24/solid";
 import {
   ManageHotel,
@@ -24,6 +25,7 @@ import {
   ManageFaqs,
   ManageTerms,
   ManageDeals,
+  ManagePrices,
   ManageCarousel,
   ManageHolidayCategorie,
   ManageBlog,
@@ -104,6 +106,12 @@ export const routes = [
         name: "Manage Deals",
         path: "/manage-deals",
         element: <ManageDeals />,
+      },
+      {
+        icon: <CurrencyDollarIcon {...icon} />,
+        name: "Manage Prices",
+        path: "/manage-prices",
+        element: <ManagePrices />,
       },
       {
         icon: <DocumentArrowUpIcon {...icon} />,

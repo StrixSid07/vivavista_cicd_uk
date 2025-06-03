@@ -9,6 +9,7 @@ export * from "@/pages/dashboard/managefaqs";
 export * from "@/pages/dashboard/manageterms";
 export * from "@/pages/dashboard/managenewslatter";
 export * from "@/pages/dashboard/managedeals";
+export * from "@/pages/dashboard/manageprices";
 export * from "@/pages/dashboard/managecarousel";
 export * from "@/pages/dashboard/manageholidaycategorie";
 export * from "@/pages/dashboard/manageblogs";
