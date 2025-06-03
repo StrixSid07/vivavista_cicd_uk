@@ -93,6 +93,7 @@ const FilterElement = ({
   // const totalPrice = leadPrice * adultCount;
 useEffect(() => {
     setTotalPrice(leadPrice * adultCount);
+  console.log(totalPrice);
   }, [leadPrice, adultCount]);
   
   // Submit booking data to parent component
