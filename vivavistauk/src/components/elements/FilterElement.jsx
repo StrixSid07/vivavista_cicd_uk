@@ -91,8 +91,10 @@ const FilterElement = ({
 
   // Calculate total price dynamically
   // const totalPrice = leadPrice * adultCount;
-  setTotalPrice(leadPrice * adultCount);
-
+useEffect(() => {
+    setTotalPrice(leadPrice * adultCount);
+  }, [leadPrice, adultCount]);
+  
   // Submit booking data to parent component
   // const handleSubmit = () => {
   //   const bookingData = {
