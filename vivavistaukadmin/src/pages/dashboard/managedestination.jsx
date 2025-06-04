@@ -148,7 +148,8 @@ export function ManageDestination() {
     if (isSubmitting) return;
     
     // Validate required fields
-    if (!formData.name) {
+    const trimmedName = formData.name.trim();
+    if (!trimmedName) {
       setAlert({ message: "Destination name is required", type: "red" });
       return;
     }
@@ -170,7 +171,7 @@ export function ManageDestination() {
 
     try {
       const data = new FormData();
-      data.append("name", formData.name);
+      data.append("name", trimmedName);
       data.append("isPopular", formData.isPopular);
       if (formData.imageFile) {
         data.append("images", formData.imageFile);
@@ -365,6 +366,9 @@ export function ManageDestination() {
               value={formData.name}
               onChange={(e) =>
                 setFormData({ ...formData, name: e.target.value })
+              }
+              onBlur={(e) =>
+                setFormData({ ...formData, name: e.target.value.trim() })
               }
               required
               disabled={isSubmitting}

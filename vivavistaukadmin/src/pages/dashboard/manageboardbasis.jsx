@@ -77,18 +77,27 @@ export function ManageBoardBasis() {
     // Prevent duplicate submissions
     if (isSubmitting) return;
     
+    // Trim the name and validate
+    const trimmedName = formData.name.trim();
+    if (!trimmedName) {
+      setAlert({ message: "Board Basis name is required", type: "red" });
+      return;
+    }
+    
     setIsSubmitting(true);
     setLoading(true);
     
     try {
+      const trimmedFormData = { name: trimmedName };
+      
       if (currentBoardbasis) {
-        await axios.put(`/boardbasis/${currentBoardbasis._id}`, formData);
+        await axios.put(`/boardbasis/${currentBoardbasis._id}`, trimmedFormData);
         setAlert({
           message: "Board Basis updated successfully!",
           type: "green",
         });
       } else {
-        await axios.post("/boardbasis", formData);
+        await axios.post("/boardbasis", trimmedFormData);
         setAlert({ message: "Board Basis added successfully!", type: "green" });
       }
       fetchBoardbasiss();
@@ -238,6 +247,9 @@ export function ManageBoardBasis() {
               value={formData.name}
               onChange={(e) =>
                 setFormData({ ...formData, name: e.target.value })
+              }
+              onBlur={(e) =>
+                setFormData({ ...formData, name: e.target.value.trim() })
               }
               required
             />
