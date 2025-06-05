@@ -455,41 +455,48 @@ const getDealById = async (req, res) => {
     }
 
     const today = new Date();
-    const threeDaysFromNow = new Date();
+    const threeDaysFromNow = new Date(today);
     threeDaysFromNow.setDate(today.getDate() + 3);
 
-    // ✨ Step 1: Expand prices if airport field is an array
+    // Expand prices by each airport if it's an array
     const expandedPrices = [];
-    for (const price of deal.prices) {
-      if (Array.isArray(price.airport)) {
-        for (const airport of price.airport) {
+    for (const price of deal.prices || []) {
+      const priceObj = price.toObject ? price.toObject() : price;
+
+      if (Array.isArray(priceObj.airport)) {
+        for (const airport of priceObj.airport) {
           expandedPrices.push({
-            ...price.toObject(), // important to clone the Mongoose document
-            airport: airport, // set single airport
+            ...priceObj,
+            airport,
           });
         }
       } else {
-        expandedPrices.push(price.toObject ? price.toObject() : price);
+        expandedPrices.push(priceObj);
       }
     }
-    deal.prices = expandedPrices; // replace deal.prices with expanded version
 
-    // ✨ Step 2: Now apply country restriction if user is NOT admin
-    if (!req.user || req.user.role !== "admin") {
-      const userCountry = req.session.country || "UK";
+    const isAdmin = req.user?.role === "admin";
+    let finalPrices = expandedPrices;
+
+    if (!isAdmin) {
+      const userCountry = req.session?.country || "UK";
+
       if (!deal.availableCountries.includes(userCountry)) {
         return res.status(403).json({
           message: "This deal is not available in your selected country.",
         });
       }
 
-      const countryPrices = deal.prices.filter((p) => {
-        const startDate = new Date(p.startdate);
-        return p.country === userCountry && startDate > threeDaysFromNow;
+      finalPrices = expandedPrices.filter((p) => {
+        const start = new Date(p.startdate); // 👈 FIXED field name
+        return p.country === userCountry && start > threeDaysFromNow;
       });
-
-      deal.prices = countryPrices.length > 0 ? countryPrices : [];
     }
+
+    // ✅ Sort prices by earliest startdate
+    finalPrices.sort((a, b) => new Date(a.startdate) - new Date(b.startdate)); // 👈 FIXED field name
+
+    deal.prices = finalPrices;
 
     res.json(deal);
   } catch (error) {
@@ -497,6 +504,7 @@ const getDealById = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 // ✅ Update a Deal (Admin Only)
 const updateDeal = async (req, res) => {
