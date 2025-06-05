@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import {
   Tabs,
   TabsHeader,
@@ -10,6 +10,56 @@ import TermsAndConditions from "../pages/TermsAndConditions";
 import Itinerary from "./Itinerary";
 import Overview from "./Overview";
 import PriceCalendar from "./PriceCalendarCard";
+
+// ✅ Memoized components
+const OverviewComponent = React.memo(({ tripData, availableCountries, whatsIncluded, exclusiveAdditions, termsAndConditions, hotels }) => (
+  <div className="md:p-4">
+    <Overview
+      tripData={tripData}
+      availableCountries={availableCountries}
+      whatsIncluded={whatsIncluded}
+      exclusiveAdditions={exclusiveAdditions}
+      termsAndConditions={termsAndConditions}
+      hotels={hotels}
+    />
+  </div>
+));
+
+const ItineraryComponent = React.memo(({ itinerary, openDays, setOpenDays }) => (
+  <div className="md:p-4">
+    <Itinerary itinerary={itinerary} openDays={openDays} setOpenDays={setOpenDays} />
+  </div>
+));
+
+const PriceCalendarComponent = React.memo(({
+  prices,
+  onTripSelect,
+  departureDates,
+  departureAirports,
+  priceMap,
+  pricesid,
+  selectedAirport,
+  setLedprice,
+}) => (
+  <div className="md:p-4">
+    <PriceCalendar
+      prices={prices}
+      onTripSelect={onTripSelect}
+      departureDates={departureDates}
+      departureAirports={departureAirports}
+      priceMap={priceMap}
+      pricesid={pricesid}
+      selectedAirport={selectedAirport}
+      setLedprice={setLedprice}
+    />
+  </div>
+));
+
+const TermsComponent = React.memo(() => (
+  <div className="md:p-4 customfontstitle">
+    <TermsAndConditions />
+  </div>
+));
 
 const FilterPageSlides = ({
   tripData,
@@ -26,85 +76,82 @@ const FilterPageSlides = ({
   pricesid,
   Airport,
   setSelectedTrip,
-  setSelectedDate, // Add this prop
-  setSelectedAirport, // Add this prop
-  departureDates, // Array of departure dates (strings)
-  departureAirports, // Array of departure airports (strings)
+  setSelectedDate,
+  setSelectedAirport,
+  departureDates,
+  departureAirports,
   priceMap,
 }) => {
   const [activeTab, setActiveTab] = useState("overview");
+  const [openDays, setOpenDays] = useState(() => itinerary?.map(() => false) || []);
 
-  const handleTripSelect = (trip) => {
+  const handleTripSelect = useCallback((trip) => {
     setSelectedTrip(trip);
     setSelectedDate(
       trip.startdate ? new Date(trip.startdate).toLocaleDateString("en-GB") : ""
     );
     setSelectedAirport(trip.airport);
-  };
+  }, [setSelectedTrip, setSelectedDate, setSelectedAirport]);
 
-  const [openDays, setOpenDays] = useState(
-    () => itinerary?.map(() => false) || []
-  );
-
-  const OverviewComponent = () => (
-    <div className="md:p-4">
-      <Overview
-        tripData={tripData}
-        availableCountries={availableCountries}
-        whatsIncluded={whatsIncluded}
-        exclusiveAdditions={exclusiveAdditions}
-        termsAndConditions={termsAndConditions}
-        hotels={hotels}
-      />
-    </div>
-  );
-  const ItineraryComponent = () => (
-    <div className="md:p-4">
-      <Itinerary
-        itinerary={itinerary}
-        openDays={openDays}
-        setOpenDays={setOpenDays}
-      />
-    </div>
-  );
-  const PriceCalendarComponent = () => (
-    <div className="md:p-4">
-      <PriceCalendar
-        prices={prices}
-        onTripSelect={handleTripSelect}
-        departureDates={departureDates}
-        departureAirports={departureAirports}
-        priceMap={priceMap}
-        pricesid={pricesid}
-        selectedAirport={Airport}
-        setLedprice={setLedprice}
-      />
-    </div>
-  );
-  const TermsComponent = () => (
-    <div className="md:p-4 customfontstitle">
-      <TermsAndConditions />
-    </div>
-  );
-
-  const tabComponents = [
-    { label: "Overview", value: "overview", component: <OverviewComponent /> },
-    {
-      label: "Itinerary",
-      value: "itinerary",
-      component: <ItineraryComponent />,
-    },
-    {
-      label: "Price Calendar",
-      value: "price-calendar",
-      component: <PriceCalendarComponent />,
-    },
-    {
-      label: "Terms and Conditions",
-      value: "terms",
-      component: <TermsComponent />,
-    },
-  ];
+  // Render only active tab content
+  const renderTabContent = useMemo(() => {
+    switch (activeTab) {
+      case "overview":
+        return (
+          <OverviewComponent
+            tripData={tripData}
+            availableCountries={availableCountries}
+            whatsIncluded={whatsIncluded}
+            exclusiveAdditions={exclusiveAdditions}
+            termsAndConditions={termsAndConditions}
+            hotels={hotels}
+          />
+        );
+      case "itinerary":
+        return (
+          <ItineraryComponent
+            itinerary={itinerary}
+            openDays={openDays}
+            setOpenDays={setOpenDays}
+          />
+        );
+      case "price-calendar":
+        return (
+          <PriceCalendarComponent
+            prices={prices}
+            onTripSelect={handleTripSelect}
+            departureDates={departureDates}
+            departureAirports={departureAirports}
+            priceMap={priceMap}
+            pricesid={pricesid}
+            selectedAirport={Airport}
+            setLedprice={setLedprice}
+          />
+        );
+      case "terms":
+        return <TermsComponent />;
+      default:
+        return null;
+    }
+  }, [
+    activeTab,
+    tripData,
+    itinerary,
+    openDays,
+    prices,
+    handleTripSelect,
+    departureDates,
+    departureAirports,
+    priceMap,
+    pricesid,
+    Airport,
+    setLedprice,
+    availableCountries,
+    whatsIncluded,
+    exclusiveAdditions,
+    termsAndConditions,
+    hotels,
+  ]);
 
   return (
     <div className="w-full flex justify-center">
@@ -117,7 +164,12 @@ const FilterPageSlides = ({
                 "bg-transparent border-b-2 border-deep-orange-600 font-semibold",
             }}
           >
-            {tabComponents.map(({ label, value }) => (
+            {[
+              { label: "Overview", value: "overview" },
+              { label: "Itinerary", value: "itinerary" },
+              { label: "Price Calendar", value: "price-calendar" },
+              { label: "Terms and Conditions", value: "terms" },
+            ].map(({ label, value }) => (
               <Tab
                 key={value}
                 value={value}
@@ -134,11 +186,7 @@ const FilterPageSlides = ({
           </TabsHeader>
           <div className="h-[600px] overflow-y-auto p-1 md:p-4">
             <TabsBody>
-              {tabComponents.map(({ value, component }) => (
-                <TabPanel key={value} value={value}>
-                  {component}
-                </TabPanel>
-              ))}
+              <TabPanel value={activeTab}>{renderTabContent}</TabPanel>
             </TabsBody>
           </div>
         </Tabs>
