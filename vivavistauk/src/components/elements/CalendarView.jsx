@@ -323,7 +323,7 @@ const CalendarView = ({
               adultCount={adultCount}
               totalPrice={selectedDayInfo?.info?.price}
               selectedDate={selectedDayInfo?.date}
-              airport={selectedDayInfo?.info[0]?.airport?.code}
+              airport={selectedDayInfo?.info[0]?.airport?._id}
               handleClose={() => setOpenDialog(false)}
             />
           </div>
