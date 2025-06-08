@@ -129,7 +129,7 @@ router.get("/:id", getDealById);
  *       403:
  *         description: Admin access required
  */
-router.post("/",protect, isAdmin, upload.array("images", 5), createDeal);
+router.post("/",protect, isAdmin, upload.array("images", 10), createDeal);
 
 /**
  * @swagger
@@ -169,7 +169,7 @@ router.post("/",protect, isAdmin, upload.array("images", 5), createDeal);
  *       403:
  *         description: Admin access required
  */
-router.put("/:id",protect, isAdmin, upload.array("images", 5), updateDeal);
+router.put("/:id",protect, isAdmin, upload.array("images", 10), updateDeal);
 
 /**
  * @swagger

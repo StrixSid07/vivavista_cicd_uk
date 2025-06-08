@@ -533,7 +533,7 @@ export function ManageHotel() {
             {/* Image Upload */}
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
-                Upload Images (JPG, JPEG, PNG only, max 5MB each, up to 5 images)
+                Upload Images (JPG, JPEG, PNG only, max 5MB each, {currentHotel ? 'up to 10 images total' : 'up to 5 images'})
               </label>
               <Input
                 type="file"
@@ -541,13 +541,14 @@ export function ManageHotel() {
                 accept="image/jpeg,image/jpg,image/png"
                 onChange={(e) => {
                   const files = Array.from(e.target.files);
-
-                  // Check total number of images
+                  
+                  // Check total number of images - different limits for new vs existing hotels
+                  const maxImages = currentHotel ? 10 : 5;
                   if (
                     files.length + newImages.length + formData.images.length >
-                    5
+                    maxImages
                   ) {
-                    setImageError("You can only upload up to 5 images.");
+                    setImageError(`You can only upload up to ${maxImages} images ${currentHotel ? 'total' : ''}.`);
                     e.target.value = ""; // reset the input
                     return;
                   }

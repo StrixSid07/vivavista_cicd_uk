@@ -48,7 +48,7 @@ const { upload, uploadToS3 } = require("../middleware/imageUpload");
  *       403:
  *         description: Admin access required
  */
-router.post("/", protect, isAdmin,upload.array("images", 5),createHotel);
+router.post("/", protect, isAdmin,upload.array("images", 10),createHotel);
 /**
  * @swagger
  * tags:
@@ -125,7 +125,7 @@ router.get("/:id", getHotelById);
  */
 // router.put("/:id", protect, isAdmin, updateHotel);
 
-router.put("/:id", protect, isAdmin,upload.array("images", 5),updateHotel);
+router.put("/:id", protect, isAdmin,upload.array("images", 10),updateHotel);
 router.delete('/image/:hotelId',protect, isAdmin, deleteHotelImage);
 /**
  * @swagger
