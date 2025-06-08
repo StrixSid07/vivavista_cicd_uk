@@ -104,6 +104,14 @@ export const ManageDeals = () => {
   const [deleteInProgress, setDeleteInProgress] = useState(false);
   const [imageError, setImageError] = useState("");
 
+  // Add this state for custom dropdowns
+  const [customDropdownOpen, setCustomDropdownOpen] = useState({
+    holidayCategories: false,
+    destinations: false,
+    hotels: false,
+    priceAirports: {} // Will store airport dropdown states by price index
+  });
+
   useEffect(() => {
     fetchDeals();
     fetchDestinations();
@@ -548,6 +556,20 @@ export const ManageDeals = () => {
     return "";
   };
 
+  // Add a function to toggle price-specific dropdowns
+  const togglePriceDropdown = (index, dropdown) => {
+    setCustomDropdownOpen(prev => ({
+      ...prev,
+      priceAirports: {
+        ...prev.priceAirports,
+        [index]: {
+          ...prev.priceAirports[index],
+          [dropdown]: !prev.priceAirports[index]?.[dropdown]
+        }
+      }
+    }));
+  };
+
   return (
     <div className="h-screen w-full overflow-hidden px-4 py-6">
       {alert.message && (
@@ -825,107 +847,139 @@ export const ManageDeals = () => {
             </Select>
             
             {/* Multiple destinations support */}
-            <Typography variant="h6" color="gray">Multicenter</Typography>
-            <Menu placement="bottom-start">
-              <MenuHandler>
-                <Button
-                  variant="gradient"
-                  color="orange"
-                  className="w-full text-left"
-                >
+            <div className="relative">
+              <Typography variant="h6" color="gray">Multicenter</Typography>
+              <button
+                type="button"
+                className="w-full flex items-center justify-between bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-4 rounded"
+                onClick={() => setCustomDropdownOpen(prev => ({
+                  ...prev,
+                  destinations: !prev.destinations
+                }))}
+              >
+                <span className="text-left">
                   {formData.destinations.length > 0
                     ? `${formData.destinations.length} destination(s) selected`
                     : "Add Multiple Destinations"}
-                </Button>
-              </MenuHandler>
-              <MenuList className="z-[100000] max-h-64 overflow-auto">
-                {destinations
-                  .filter(destination => destination._id !== formData.destination) // Filter out primary destination
-                  .map((destination) => (
-                  <MenuItem
-                    key={destination._id}
-                    className="flex items-center gap-2"
-                    onClick={(e) => e.preventDefault()} // Prevent dropdown from closing
+                </span>
+                <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </button>
+              
+              {customDropdownOpen.destinations && (
+                <>
+                  <div 
+                    className="absolute z-[100000] mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-64 overflow-y-auto"
                   >
-                    <Checkbox
-                      ripple={false}
-                      color="orange"
-                      containerProps={{ className: "p-0" }}
-                      className="hover:before:content-none"
-                      checked={formData.destinations.some(id => 
-                        id === destination._id || id.toString() === destination._id.toString()
-                      )}
-                      onChange={(e) => {
-                        e.stopPropagation(); // Prevent bubbling to MenuItem
-                        const isChecked = e.target.checked;
-                        const updatedDestinations = isChecked
-                          ? [...formData.destinations, destination._id]
-                          : formData.destinations.filter(
-                              id => id.toString() !== destination._id.toString()
-                            );
-                        setFormData({
-                          ...formData,
-                          destinations: updatedDestinations,
-                        });
-                        console.log("Updated destinations:", updatedDestinations);
-                      }}
-                    />
-                    <span>{destination.name}</span>
-                  </MenuItem>
-                ))}
-              </MenuList>
-            </Menu>
+                    {destinations
+                      .filter(destination => destination._id !== formData.destination)
+                      .map((destination) => (
+                        <div 
+                          key={destination._id}
+                          className="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            id={`destination-${destination._id}`}
+                            checked={formData.destinations.some(id => 
+                              id === destination._id || id.toString() === destination._id.toString()
+                            )}
+                            onChange={(e) => {
+                              const isChecked = e.target.checked;
+                              const updatedDestinations = isChecked
+                                ? [...formData.destinations, destination._id]
+                                : formData.destinations.filter(
+                                    id => id.toString() !== destination._id.toString()
+                                  );
+                              setFormData({
+                                ...formData,
+                                destinations: updatedDestinations,
+                              });
+                            }}
+                            className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+                          />
+                          <label 
+                            htmlFor={`destination-${destination._id}`}
+                            className="ml-2 text-sm text-gray-700 cursor-pointer flex-1"
+                          >
+                            {destination.name}
+                          </label>
+                        </div>
+                      ))}
+                  </div>
+                  <div 
+                    className="fixed inset-0 z-[10000]" 
+                    onClick={() => setCustomDropdownOpen(prev => ({...prev, destinations: false}))}
+                  ></div>
+                </>
+              )}
+            </div>
 
-            <Typography variant="h6">Select Holidays Categories</Typography>
-            <Menu placement="bottom-start">
-              <MenuHandler>
-                <Button
-                  variant="gradient"
-                  color="blue"
-                  className="w-full text-left"
-                >
+            <div className="relative">
+              <Typography variant="h6">Select Holidays Categories</Typography>
+              <button
+                type="button"
+                className="w-full flex items-center justify-between bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded"
+                onClick={() => setCustomDropdownOpen(prev => ({
+                  ...prev,
+                  holidayCategories: !prev.holidayCategories
+                }))}
+              >
+                <span className="text-left">
                   {formData.holidaycategories.length > 0
                     ? `${formData.holidaycategories.length} categorie(s) selected`
                     : "Select Holidays Categories"}
-                </Button>
-              </MenuHandler>
-              <MenuList className="z-[100000] max-h-64 overflow-auto">
-                {holidaycategories.map((holidaycategorie) => (
-                  <MenuItem
-                    key={holidaycategorie._id}
-                    className="flex items-center gap-2"
-                    onClick={(e) => e.preventDefault()} // Prevent dropdown from closing
+                </span>
+                <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </button>
+              
+              {customDropdownOpen.holidayCategories && (
+                <>
+                  <div 
+                    className="absolute z-[100000] mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-64 overflow-y-auto"
                   >
-                    <Checkbox
-                      ripple={false}
-                      color="blue"
-                      containerProps={{ className: "p-0" }}
-                      className="hover:before:content-none"
-                      checked={formData.holidaycategories.includes(
-                        holidaycategorie._id,
-                      )}
-                      onChange={(e) => {
-                        e.stopPropagation(); // Prevent bubbling to MenuItem
-                        const isChecked = e.target.checked;
-                        const updatedHolidaysCategories = isChecked
-                          ? [
-                              ...formData.holidaycategories,
-                              holidaycategorie._id,
-                            ]
-                          : formData.holidaycategories.filter(
-                              (id) => id !== holidaycategorie._id,
-                            );
-                        setFormData({
-                          ...formData,
-                          holidaycategories: updatedHolidaysCategories,
-                        });
-                      }}
-                    />
-                    <span>{holidaycategorie.name}</span>
-                  </MenuItem>
-                ))}
-              </MenuList>
-            </Menu>
+                    {holidaycategories.map((holidaycategorie) => (
+                      <div 
+                        key={holidaycategorie._id}
+                        className="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          id={`holiday-${holidaycategorie._id}`}
+                          checked={formData.holidaycategories.includes(holidaycategorie._id)}
+                          onChange={(e) => {
+                            const isChecked = e.target.checked;
+                            const updatedHolidaysCategories = isChecked
+                              ? [...formData.holidaycategories, holidaycategorie._id]
+                              : formData.holidaycategories.filter(
+                                  (id) => id !== holidaycategorie._id
+                                );
+                            setFormData({
+                              ...formData,
+                              holidaycategories: updatedHolidaysCategories,
+                            });
+                          }}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <label 
+                          htmlFor={`holiday-${holidaycategorie._id}`}
+                          className="ml-2 text-sm text-gray-700 cursor-pointer flex-1"
+                        >
+                          {holidaycategorie.name}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                  <div 
+                    className="fixed inset-0 z-[10000]" 
+                    onClick={() => setCustomDropdownOpen(prev => ({...prev, holidayCategories: false}))}
+                  ></div>
+                </>
+              )}
+            </div>
 
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <Input
@@ -955,46 +1009,65 @@ export const ManageDeals = () => {
               </Select>
             </div>
 
-            <Typography variant="h6">Select Hotels</Typography>
-            <Menu placement="bottom-start">
-              <MenuHandler>
-                <Button
-                  variant="gradient"
-                  color="amber"
-                  className="w-full text-left"
-                >
+            <div className="relative">
+              <Typography variant="h6">Select Hotels</Typography>
+              <button
+                type="button"
+                className="w-full flex items-center justify-between bg-amber-500 hover:bg-amber-600 text-white font-medium py-2 px-4 rounded"
+                onClick={() => setCustomDropdownOpen(prev => ({
+                  ...prev,
+                  hotels: !prev.hotels
+                }))}
+              >
+                <span className="text-left">
                   {formData.hotels.length > 0
                     ? `${formData.hotels.length} hotel(s) selected`
                     : "Select Hotels"}
-                </Button>
-              </MenuHandler>
-              <MenuList className="z-[100000] max-h-64 overflow-auto">
-                {hotels.map((hotel) => (
-                  <MenuItem
-                    key={hotel._id}
-                    className="flex items-center gap-2"
-                    onClick={(e) => e.preventDefault()} // Prevent dropdown from closing
+                </span>
+                <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </button>
+              
+              {customDropdownOpen.hotels && (
+                <>
+                  <div 
+                    className="absolute z-[100000] mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-64 overflow-y-auto"
                   >
-                    <Checkbox
-                      color="amber"
-                      ripple={false}
-                      containerProps={{ className: "p-0" }}
-                      className="hover:before:content-none"
-                      checked={formData.hotels.includes(hotel._id)}
-                      onChange={(e) => {
-                        e.stopPropagation(); // Prevent bubbling to MenuItem
-                        const isChecked = e.target.checked;
-                        const updatedHotels = isChecked
-                          ? [...formData.hotels, hotel._id]
-                          : formData.hotels.filter((id) => id !== hotel._id);
-                        setFormData({ ...formData, hotels: updatedHotels });
-                      }}
-                    />
-                    <span>{hotel.name}</span>
-                  </MenuItem>
-                ))}
-              </MenuList>
-            </Menu>
+                    {hotels.map((hotel) => (
+                      <div 
+                        key={hotel._id}
+                        className="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          id={`hotel-${hotel._id}`}
+                          checked={formData.hotels.includes(hotel._id)}
+                          onChange={(e) => {
+                            const isChecked = e.target.checked;
+                            const updatedHotels = isChecked
+                              ? [...formData.hotels, hotel._id]
+                              : formData.hotels.filter((id) => id !== hotel._id);
+                            setFormData({ ...formData, hotels: updatedHotels });
+                          }}
+                          className="h-4 w-4 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
+                        />
+                        <label 
+                          htmlFor={`hotel-${hotel._id}`}
+                          className="ml-2 text-sm text-gray-700 cursor-pointer flex-1"
+                        >
+                          {hotel.name}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                  <div 
+                    className="fixed inset-0 z-[10000]" 
+                    onClick={() => setCustomDropdownOpen(prev => ({...prev, hotels: false}))}
+                  ></div>
+                </>
+              )}
+            </div>
 
             {/* Price Fields */}
             <Typography variant="h6">Price Details</Typography>
@@ -1042,62 +1115,76 @@ export const ManageDeals = () => {
                     ))}
                   </Select>
 
-                  <Menu placement="bottom-start">
-                    <MenuHandler>
-                      <Button
-                        variant="gradient"
-                        color="green"
-                        className="w-full text-left"
-                      >
+                  <div className="relative">
+                    <button
+                      type="button"
+                      className="w-full flex items-center justify-between bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded"
+                      onClick={() => togglePriceDropdown(index, 'airports')}
+                    >
+                      <span className="text-left">
                         {formData.prices[index].airport.length > 0
                           ? `${formData.prices[index].airport.length} airport(s) selected`
                           : "Select Airports"}
-                      </Button>
-                    </MenuHandler>
-                    <MenuList className="z-[100000] max-h-64 overflow-auto">
-                      {airports.map((airport) => (
-                        <MenuItem
-                          key={airport._id}
-                          className="flex items-center gap-2"
-                          onClick={(e) => e.preventDefault()} // Prevent dropdown from closing
+                      </span>
+                      <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                      </svg>
+                    </button>
+                    
+                    {customDropdownOpen.priceAirports[index]?.airports && (
+                      <>
+                        <div 
+                          className="absolute z-[100000] mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-64 overflow-y-auto"
                         >
-                          <Checkbox
-                            color="green"
-                            ripple={false}
-                            containerProps={{ className: "p-0" }}
-                            className="hover:before:content-none"
-                            checked={price.airport?.includes(airport._id)}
-                            onChange={(e) => {
-                              e.stopPropagation();
-                              const isChecked = e.target.checked;
-                              const updatedPrices = [...formData.prices];
-                              const updatedAirports = isChecked
-                                ? [
-                                    ...(updatedPrices[index].airport || []),
-                                    airport._id,
-                                  ]
-                                : (updatedPrices[index].airport || []).filter(
-                                    (id) => id !== airport._id,
-                                  );
+                          {airports.map((airport) => (
+                            <div 
+                              key={airport._id}
+                              className="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                id={`airport-${index}-${airport._id}`}
+                                checked={price.airport?.includes(airport._id)}
+                                onChange={(e) => {
+                                  const isChecked = e.target.checked;
+                                  const updatedPrices = [...formData.prices];
+                                  const updatedAirports = isChecked
+                                    ? [
+                                        ...(updatedPrices[index].airport || []),
+                                        airport._id,
+                                      ]
+                                    : (updatedPrices[index].airport || []).filter(
+                                        (id) => id !== airport._id,
+                                      );
 
-                              updatedPrices[index] = {
-                                ...updatedPrices[index],
-                                airport: updatedAirports,
-                              };
+                                  updatedPrices[index] = {
+                                    ...updatedPrices[index],
+                                    airport: updatedAirports,
+                                  };
 
-                              setFormData({
-                                ...formData,
-                                prices: updatedPrices,
-                              });
-                            }}
-                          />
-                          <span>
-                            {airport.name} ({airport.code})
-                          </span>
-                        </MenuItem>
-                      ))}
-                    </MenuList>
-                  </Menu>
+                                  setFormData({
+                                    ...formData,
+                                    prices: updatedPrices,
+                                  });
+                                }}
+                                className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                              />
+                              <label 
+                                htmlFor={`airport-${index}-${airport._id}`}
+                                className="ml-2 text-sm text-gray-700 cursor-pointer flex-1"
+                              >
+                                {airport.name} ({airport.code})
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                        <div 
+                          className="fixed inset-0 z-[10000]" 
+                          onClick={() => togglePriceDropdown(index, 'airports')}
+                        ></div>
+                      </>
+                    )}
+                  </div>
 
                   <Select
                     label="Hotel"
@@ -1301,7 +1388,7 @@ export const ManageDeals = () => {
                     {
                       country: "",
                       priceswitch: false,
-                      airport: "",
+                      airport: [],
                       hotel: "",
                       startdate: "",
                       enddate: "",
