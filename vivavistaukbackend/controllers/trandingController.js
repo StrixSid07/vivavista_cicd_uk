@@ -4,16 +4,15 @@ const Deal = require("../models/Deal");
 exports.getHotDeals = async (req, res) => {
   try {
     const deals = await Deal.find({ isHotDeal: true })
+      .sort({ updatedAt: -1, createdAt: -1 }) // Sort by most recently updated, then created
       .populate("destination", "name")
       .populate("boardBasis", "name");
 
-    deals.sort((a, b) => a.destination.name.localeCompare(b.destination.name));
-
     res.json(deals);
-  } catch {
+  } catch (error) {
     res
       .status(500)
-      .json({ message: "Error fetching Top deals by destination", error });
+      .json({ message: "Error fetching Hot deals", error: error.message });
   }
 };
 
@@ -75,11 +74,12 @@ exports.getTopDeals = async (req, res) => {
   try {
     // Fetch Top Deals
     const topDeals = await Deal.find({ isTopDeal: true })
+      .sort({ updatedAt: -1, createdAt: -1 }) // Sort by most recently updated, then created
       .populate("prices.hotel")
       .populate("destination", "name")
       .populate("boardBasis", "name")
       .select(
-        "title destination description prices boardBasis days images isTopDeal isHotdeal"
+        "title destination description prices boardBasis days images isTopDeal isHotdeal updatedAt createdAt"
       );
 
     // Fetch Hot Deals (excluding already-included Top Deals by _id)
@@ -89,11 +89,12 @@ exports.getTopDeals = async (req, res) => {
       isHotdeal: true,
       _id: { $nin: topDealIds }, // prevent duplicates
     })
+      .sort({ updatedAt: -1, createdAt: -1 }) // Sort by most recently updated, then created
       .populate("prices.hotel")
       .populate("destination", "name")
       .populate("boardBasis", "name")
       .select(
-        "title destination description prices boardBasis days images isTopDeal isHotdeal"
+        "title destination description prices boardBasis days images isTopDeal isHotdeal updatedAt createdAt"
       );
 
     // Combine: Top Deals first, then Hot Deals
@@ -132,6 +133,7 @@ exports.getTopDealsByDestination = async (req, res) => {
     const destinationQuery = { ...baseQuery, destination: destinationObjectId };
 
     let deals = await Deal.find(destinationQuery)
+      .sort({ updatedAt: -1, createdAt: -1 }) // Sort by most recently updated, then created
       .limit(6)
       .populate("destination")
       .populate("boardBasis")
@@ -146,6 +148,7 @@ exports.getTopDealsByDestination = async (req, res) => {
       };
 
       deals = await Deal.find(fallbackQuery)
+        .sort({ updatedAt: -1, createdAt: -1 }) // Sort by most recently updated, then created
         .limit(6)
         .populate("destination")
         .populate("boardBasis")
