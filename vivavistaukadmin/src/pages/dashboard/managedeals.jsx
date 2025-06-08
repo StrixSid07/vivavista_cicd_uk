@@ -120,6 +120,33 @@ export const ManageDeals = () => {
     priceAirports: {}
   });
 
+  // Add these state variables after the other state declarations
+  const [expandedPrices, setExpandedPrices] = useState({});
+  const [pricesPagination, setPricesPagination] = useState({
+    currentPage: 1,
+    itemsPerPage: 5
+  });
+  const [viewPricesPagination, setViewPricesPagination] = useState({
+    currentPage: 1,
+    itemsPerPage: 5
+  });
+
+  // Add this function to toggle the expanded state of a price
+  const togglePriceExpand = (index) => {
+    setExpandedPrices(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
+  };
+
+  // Add this function to handle pagination
+  const handlePricesPageChange = (newPage) => {
+    setPricesPagination(prev => ({
+      ...prev,
+      currentPage: newPage
+    }));
+  };
+  
   useEffect(() => {
     fetchDeals();
     fetchDestinations();
@@ -500,6 +527,15 @@ export const ManageDeals = () => {
       prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index],
     );
   };
+  
+  // Function to handle pagination for view dialog prices
+  const handleViewPricesPageChange = (newPage) => {
+    setViewPricesPagination(prev => ({
+      ...prev,
+      currentPage: newPage
+    }));
+  };
+
   const today = new Date();
   const minStartDate = new Date(today);
   minStartDate.setDate(today.getDate() + 2); // 2 days after today
@@ -879,7 +915,7 @@ export const ManageDeals = () => {
             
             {/* Multiple destinations support */}
             <div className="relative">
-              <Typography variant="h6" color="gray">Multicenter</Typography>
+            <Typography variant="h6" color="gray">Multicenter</Typography>
               <button
                 type="button"
                 className="w-full flex items-center justify-between bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-4 rounded"
@@ -916,35 +952,35 @@ export const ManageDeals = () => {
                     
                     {/* Options list with scroll */}
                     <div className="overflow-y-auto max-h-48">
-                      {destinations
+                {destinations
                         .filter(destination => 
                           // Filter out the primary destination
                           destination._id !== formData.destination &&
                           // Filter by search text
                           destination.name.toLowerCase().includes(dropdownSearch.destinations.toLowerCase())
                         )
-                        .map((destination) => (
+                  .map((destination) => (
                           <div 
-                            key={destination._id}
+                    key={destination._id}
                             className="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer"
                           >
                             <input
                               type="checkbox"
                               id={`destination-${destination._id}`}
-                              checked={formData.destinations.some(id => 
-                                id === destination._id || id.toString() === destination._id.toString()
-                              )}
-                              onChange={(e) => {
-                                const isChecked = e.target.checked;
-                                const updatedDestinations = isChecked
-                                  ? [...formData.destinations, destination._id]
-                                  : formData.destinations.filter(
-                                      id => id.toString() !== destination._id.toString()
-                                    );
-                                setFormData({
-                                  ...formData,
-                                  destinations: updatedDestinations,
-                                });
+                      checked={formData.destinations.some(id => 
+                        id === destination._id || id.toString() === destination._id.toString()
+                      )}
+                      onChange={(e) => {
+                        const isChecked = e.target.checked;
+                        const updatedDestinations = isChecked
+                          ? [...formData.destinations, destination._id]
+                          : formData.destinations.filter(
+                              id => id.toString() !== destination._id.toString()
+                            );
+                        setFormData({
+                          ...formData,
+                          destinations: updatedDestinations,
+                        });
                               }}
                               className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
                             />
@@ -967,7 +1003,7 @@ export const ManageDeals = () => {
             </div>
 
             <div className="relative">
-              <Typography variant="h6">Select Holidays Categories</Typography>
+            <Typography variant="h6">Select Holidays Categories</Typography>
               <button
                 type="button"
                 className="w-full flex items-center justify-between bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded"
@@ -1010,25 +1046,25 @@ export const ManageDeals = () => {
                         )
                         .map((holidaycategorie) => (
                           <div 
-                            key={holidaycategorie._id}
+                    key={holidaycategorie._id}
                             className="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer"
                           >
                             <input
                               type="checkbox"
                               id={`holiday-${holidaycategorie._id}`}
                               checked={formData.holidaycategories.includes(holidaycategorie._id)}
-                              onChange={(e) => {
-                                const isChecked = e.target.checked;
-                                const updatedHolidaysCategories = isChecked
+                      onChange={(e) => {
+                        const isChecked = e.target.checked;
+                        const updatedHolidaysCategories = isChecked
                                   ? [...formData.holidaycategories, holidaycategorie._id]
-                                  : formData.holidaycategories.filter(
+                          : formData.holidaycategories.filter(
                                       (id) => id !== holidaycategorie._id
-                                    );
-                                setFormData({
-                                  ...formData,
-                                  holidaycategories: updatedHolidaysCategories,
-                                });
-                              }}
+                            );
+                        setFormData({
+                          ...formData,
+                          holidaycategories: updatedHolidaysCategories,
+                        });
+                      }}
                               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                             />
                             <label 
@@ -1078,7 +1114,7 @@ export const ManageDeals = () => {
             </div>
 
             <div className="relative">
-              <Typography variant="h6">Select Hotels</Typography>
+            <Typography variant="h6">Select Hotels</Typography>
               <button
                 type="button"
                 className="w-full flex items-center justify-between bg-amber-500 hover:bg-amber-600 text-white font-medium py-2 px-4 rounded"
@@ -1121,20 +1157,20 @@ export const ManageDeals = () => {
                         )
                         .map((hotel) => (
                           <div 
-                            key={hotel._id}
+                    key={hotel._id}
                             className="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer"
                           >
                             <input
                               type="checkbox"
                               id={`hotel-${hotel._id}`}
-                              checked={formData.hotels.includes(hotel._id)}
-                              onChange={(e) => {
-                                const isChecked = e.target.checked;
-                                const updatedHotels = isChecked
-                                  ? [...formData.hotels, hotel._id]
-                                  : formData.hotels.filter((id) => id !== hotel._id);
-                                setFormData({ ...formData, hotels: updatedHotels });
-                              }}
+                      checked={formData.hotels.includes(hotel._id)}
+                      onChange={(e) => {
+                        const isChecked = e.target.checked;
+                        const updatedHotels = isChecked
+                          ? [...formData.hotels, hotel._id]
+                          : formData.hotels.filter((id) => id !== hotel._id);
+                        setFormData({ ...formData, hotels: updatedHotels });
+                      }}
                               className="h-4 w-4 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
                             />
                             <label 
@@ -1156,370 +1192,516 @@ export const ManageDeals = () => {
             </div>
 
             {/* Price Fields */}
-            <Typography variant="h6">Price Details</Typography>
-            {formData.prices.map((price, index) => (
-              <div key={index} className="mb-4 space-y-2 rounded border p-3">
-                {/* Add the Switch for priceswitch */}
-                <div className="flex items-center">
-                  <Switch
-                    id={`priceswitch-${index}`}
-                    ripple={false}
-                    checked={price.priceswitch}
-                    onChange={(e) => {
-                      const updatedPrices = [...formData.prices];
-                      updatedPrices[index].priceswitch = e.target.checked;
-                      setFormData({ ...formData, prices: updatedPrices });
-                    }}
-                    className="h-full w-full checked:bg-black"
-                    containerProps={{
-                      className: "w-11 h-6",
-                    }}
-                    circleProps={{
-                      className: "before:hidden left-0.5 border-none",
-                    }}
-                  />
-                  <label className="ml-2" htmlFor={`priceswitch-${index}`}>
-                    Price Switch (turn switch to black for off in website)
-                  </label>
-                </div>
-
-                <div className="grid grid-cols-1 gap-2 p-2 md:grid-cols-3">
-                  <Select
-                    label="Country"
-                    value={price.country}
-                    onChange={(value) => {
-                      const updatedPrices = [...formData.prices];
-                      updatedPrices[index].country = value;
-                      setFormData({ ...formData, prices: updatedPrices });
-                    }}
-                    required
+            <div className="mb-4">
+              <div className="flex justify-between items-center mb-2">
+                <Typography variant="h6" className="text-amber-600">Price Details</Typography>
+                <div className="flex items-center gap-2">
+                  <select 
+                    className="border border-amber-400 rounded px-2 py-1 text-sm bg-amber-50"
+                    value={pricesPagination.itemsPerPage}
+                    onChange={(e) => setPricesPagination(prev => ({ 
+                      ...prev, 
+                      itemsPerPage: parseInt(e.target.value),
+                      currentPage: 1 // Reset to first page when changing items per page
+                    }))}
                   >
-                    {["UK", "USA", "Canada"].map((country) => (
-                      <Option key={country} value={country}>
-                        {country}
-                      </Option>
-                    ))}
-                  </Select>
-
-                  <div className="relative">
-                    <button
-                      type="button"
-                      className="w-full flex items-center justify-between bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded"
-                      onClick={() => togglePriceDropdown(index, 'airports')}
-                    >
-                      <span className="text-left">
-                        {formData.prices[index].airport.length > 0
-                          ? `${formData.prices[index].airport.length} airport(s) selected`
-                          : "Select Airports"}
-                      </span>
-                      <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-                      </svg>
-                    </button>
-                    
-                    {customDropdownOpen.priceAirports[index]?.airports && (
-                      <>
-                        <div 
-                          className="absolute z-[100000] mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-64 overflow-hidden flex flex-col"
-                        >
-                          {/* Search input */}
-                          <div className="p-2 border-b sticky top-0 bg-white">
-                            <input
-                              type="text"
-                              className="w-full p-2 border border-gray-300 rounded-md"
-                              placeholder="Search airports..."
-                              value={dropdownSearch.priceAirports[index]?.airports || ''}
-                              onChange={(e) => handleSearchChange('airports', e.target.value, index)}
-                            />
-                          </div>
-                          
-                          {/* Options list with scroll */}
-                          <div className="overflow-y-auto max-h-48">
-                            {airports
-                              .filter(airport => {
-                                const searchText = dropdownSearch.priceAirports[index]?.airports || '';
-                                return airport.name.toLowerCase().includes(searchText.toLowerCase()) ||
-                                       airport.code.toLowerCase().includes(searchText.toLowerCase());
-                              })
-                              .map((airport) => (
-                                <div 
-                                  key={airport._id}
-                                  className="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    id={`airport-${index}-${airport._id}`}
-                                    checked={price.airport?.includes(airport._id)}
-                                    onChange={(e) => {
-                                      const isChecked = e.target.checked;
-                                      const updatedPrices = [...formData.prices];
-                                      const updatedAirports = isChecked
-                                        ? [
-                                            ...(updatedPrices[index].airport || []),
-                                            airport._id,
-                                          ]
-                                        : (updatedPrices[index].airport || []).filter(
-                                            (id) => id !== airport._id,
-                                          );
-
-                                      updatedPrices[index] = {
-                                        ...updatedPrices[index],
-                                        airport: updatedAirports,
-                                      };
-
-                                      setFormData({
-                                        ...formData,
-                                        prices: updatedPrices,
-                                      });
-                                    }}
-                                    className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                                  />
-                                  <label 
-                                    htmlFor={`airport-${index}-${airport._id}`}
-                                    className="ml-2 text-sm text-gray-700 cursor-pointer flex-1"
-                                  >
-                                    {airport.name} ({airport.code})
-                                  </label>
-                                </div>
-                              ))}
-                          </div>
-                        </div>
-                        <div 
-                          className="fixed inset-0 z-[10000]" 
-                          onClick={() => togglePriceDropdown(index, 'airports')}
-                        ></div>
-                      </>
-                    )}
-                  </div>
-
-                  <Select
-                    label="Hotel"
-                    value={
-                      price.hotel && typeof price.hotel === "object"
-                        ? price.hotel._id
-                        : price.hotel
-                    }
-                    onChange={(value) => {
-                      const updatedPrices = [...formData.prices];
-                      updatedPrices[index].hotel = value;
+                    <option value={10000}>None (Show All)</option>
+                    <option value={5}>5 per page</option>
+                    <option value={10}>10 per page</option>
+                    <option value={20}>20 per page</option>
+                    <option value={50}>50 per page</option>
+                  </select>
+                  <button
+                    type="button"
+                    className="bg-amber-500 hover:bg-amber-600 text-white text-sm px-3 py-1 rounded"
+                    onClick={() => {
+                      const updatedPrices = [...formData.prices, {
+                        country: "",
+                        priceswitch: false,
+                        airport: [],
+                        hotel: "",
+                        startdate: "",
+                        enddate: "",
+                        price: 0,
+                        flightDetails: {
+                          outbound: {
+                            departureTime: "",
+                            arrivalTime: "",
+                            airline: "",
+                            flightNumber: "",
+                          },
+                          returnFlight: {
+                            departureTime: "",
+                            arrivalTime: "",
+                            airline: "",
+                            flightNumber: "",
+                          },
+                        },
+                      }];
                       setFormData({ ...formData, prices: updatedPrices });
+                      // Expand the newly added price
+                      setExpandedPrices(prev => ({
+                        ...prev,
+                        [updatedPrices.length - 1]: true
+                      }));
+                      // Go to the page containing the new price
+                      const newPage = Math.ceil(updatedPrices.length / pricesPagination.itemsPerPage);
+                      setPricesPagination(prev => ({
+                        ...prev,
+                        currentPage: newPage
+                      }));
                     }}
-                    required
                   >
-                    {hotels.map((hotel) => (
-                      <Option key={hotel._id} value={hotel._id}>
-                        {hotel.name}
-                      </Option>
-                    ))}
-                  </Select>
-                </div>
-
-                <div className="grid grid-cols-1 gap-2 p-2 md:grid-cols-3">
-                  <Input
-                    label="Start Date"
-                    type="date"
-                    min={minStartStr}
-                    value={price.startdate}
-                    onChange={(e) => {
-                      const updatedPrices = [...formData.prices];
-                      updatedPrices[index].startdate = e.target.value;
-                      if (
-                        updatedPrices[index].enddate &&
-                        new Date(updatedPrices[index].enddate) <
-                          new Date(e.target.value)
-                      ) {
-                        updatedPrices[index].enddate = e.target.value;
-                      }
-                      setFormData({ ...formData, prices: updatedPrices });
-                      validateDateRange(updatedPrices[index], formData.days);
-                    }}
-                    required
-                  />
-                  <Input
-                    label="End Date"
-                    type="date"
-                    min={price.startdate || minStartStr} // Prevent end date before start
-                    value={price.enddate}
-                    onChange={(e) => {
-                      const updatedPrices = [...formData.prices];
-                      updatedPrices[index].enddate = e.target.value;
-                      setFormData({ ...formData, prices: updatedPrices });
-                      validateDateRange(updatedPrices[index], formData.days);
-                    }}
-                    required
-                  />
-                  <Input
-                    label="Price"
-                    type="number"
-                    value={price.price === 0 ? "" : price.price}
-                    onChange={(e) => {
-                      const updatedPrices = [...formData.prices];
-                      updatedPrices[index].price = Number(e.target.value);
-                      setFormData({ ...formData, prices: updatedPrices });
-                    }}
-                    required
-                  />
-                </div>
-
-                {/* Flight Details */}
-                <Typography variant="small" color="blue-gray">
-                  Outbound Flight
-                </Typography>
-                <div className="grid grid-cols-1 gap-2 p-2 md:grid-cols-2">
-                  <Input
-                    label="Departure Time"
-                    type="time"
-                    value={price.flightDetails.outbound.departureTime}
-                    onChange={(e) => {
-                      const updatedPrices = [...formData.prices];
-                      updatedPrices[
-                        index
-                      ].flightDetails.outbound.departureTime = e.target.value;
-                      setFormData({ ...formData, prices: updatedPrices });
-                    }}
-                  />
-                  <Input
-                    label="Arrival Time"
-                    type="time"
-                    value={price.flightDetails.outbound.arrivalTime}
-                    onChange={(e) => {
-                      const updatedPrices = [...formData.prices];
-                      updatedPrices[index].flightDetails.outbound.arrivalTime =
-                        e.target.value;
-                      setFormData({ ...formData, prices: updatedPrices });
-                    }}
-                  />
-                  <Input
-                    label="Airline"
-                    value={price.flightDetails.outbound.airline}
-                    onChange={(e) => {
-                      const updatedPrices = [...formData.prices];
-                      updatedPrices[index].flightDetails.outbound.airline =
-                        e.target.value;
-                      setFormData({ ...formData, prices: updatedPrices });
-                    }}
-                  />
-                  <Input
-                    label="Flight Number"
-                    value={price.flightDetails.outbound.flightNumber}
-                    onChange={(e) => {
-                      const updatedPrices = [...formData.prices];
-                      updatedPrices[index].flightDetails.outbound.flightNumber =
-                        e.target.value;
-                      setFormData({ ...formData, prices: updatedPrices });
-                    }}
-                  />
-                </div>
-
-                <Typography variant="small" color="blue-gray">
-                  Return Flight
-                </Typography>
-                <div className="grid grid-cols-1 gap-2 p-2 md:grid-cols-2">
-                  <Input
-                    label="Departure Time"
-                    type="time"
-                    value={price.flightDetails.returnFlight.departureTime}
-                    onChange={(e) => {
-                      const updatedPrices = [...formData.prices];
-                      updatedPrices[
-                        index
-                      ].flightDetails.returnFlight.departureTime =
-                        e.target.value;
-                      setFormData({ ...formData, prices: updatedPrices });
-                    }}
-                  />
-                  <Input
-                    label="Arrival Time"
-                    type="time"
-                    value={price.flightDetails.returnFlight.arrivalTime}
-                    onChange={(e) => {
-                      const updatedPrices = [...formData.prices];
-                      updatedPrices[
-                        index
-                      ].flightDetails.returnFlight.arrivalTime = e.target.value;
-                      setFormData({ ...formData, prices: updatedPrices });
-                    }}
-                  />
-                  <Input
-                    label="Airline"
-                    value={price.flightDetails.returnFlight.airline}
-                    onChange={(e) => {
-                      const updatedPrices = [...formData.prices];
-                      updatedPrices[index].flightDetails.returnFlight.airline =
-                        e.target.value;
-                      setFormData({ ...formData, prices: updatedPrices });
-                    }}
-                  />
-                  <Input
-                    label="Flight Number"
-                    value={price.flightDetails.returnFlight.flightNumber}
-                    onChange={(e) => {
-                      const updatedPrices = [...formData.prices];
-                      updatedPrices[
-                        index
-                      ].flightDetails.returnFlight.flightNumber =
-                        e.target.value;
-                      setFormData({ ...formData, prices: updatedPrices });
-                    }}
-                  />
-                </div>
-                <div className="flex w-full items-end justify-end">
-                  {formData.prices.length > 1 && (
-                    <Button
-                      size="sm"
-                      color="red"
-                      variant="text"
-                      onClick={() => {
-                        const updatedPrices = formData.prices.filter(
-                          (_, i) => i !== index,
-                        );
-                        setFormData({ ...formData, prices: updatedPrices });
-                      }}
-                    >
-                      Remove
-                    </Button>
-                  )}
+                    Add Price
+                  </button>
                 </div>
               </div>
-            ))}
+              
+              {/* Show pagination if there are more prices than items per page */}
+              {formData.prices.length > pricesPagination.itemsPerPage && (
+                <div className="flex justify-center mb-4">
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      className="bg-amber-100 hover:bg-amber-200 px-3 py-1 rounded disabled:opacity-50"
+                      disabled={pricesPagination.currentPage === 1}
+                      onClick={() => handlePricesPageChange(pricesPagination.currentPage - 1)}
+                    >
+                      &laquo;
+                    </button>
+                    
+                    {Array.from({ length: Math.ceil(formData.prices.length / pricesPagination.itemsPerPage) }, (_, i) => i + 1)
+                      .filter(page => {
+                        const currentPage = pricesPagination.currentPage;
+                        const totalPages = Math.ceil(formData.prices.length / pricesPagination.itemsPerPage);
+                        // Always show first and last page
+                        if (page === 1 || page === totalPages) return true;
+                        // Show pages around current page
+                        if (page >= currentPage - 1 && page <= currentPage + 1) return true;
+                        return false;
+                      })
+                      .map((page, i, filteredPages) => (
+                        <React.Fragment key={page}>
+                          {i > 0 && filteredPages[i - 1] + 1 !== page && (
+                            <span className="px-3 py-1">...</span>
+                          )}
+                          <button
+                            type="button"
+                            className={`px-3 py-1 rounded ${
+                              page === pricesPagination.currentPage
+                                ? "bg-amber-500 text-white"
+                                : "bg-amber-50 hover:bg-amber-100"
+                            }`}
+                            onClick={() => handlePricesPageChange(page)}
+                          >
+                            {page}
+                          </button>
+                        </React.Fragment>
+                      ))
+                    }
+                    
+                    <button
+                      type="button"
+                      className="bg-amber-100 hover:bg-amber-200 px-3 py-1 rounded disabled:opacity-50"
+                      disabled={pricesPagination.currentPage === Math.ceil(formData.prices.length / pricesPagination.itemsPerPage)}
+                      onClick={() => handlePricesPageChange(pricesPagination.currentPage + 1)}
+                    >
+                      &raquo;
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              {/* Display prices for the current page */}
+              {formData.prices
+                .slice(
+                  (pricesPagination.currentPage - 1) * pricesPagination.itemsPerPage,
+                  pricesPagination.currentPage * pricesPagination.itemsPerPage
+                )
+                .map((price, sliceIndex) => {
+                  // Calculate the actual index in the formData.prices array
+                  const index = (pricesPagination.currentPage - 1) * pricesPagination.itemsPerPage + sliceIndex;
+                  
+                  return (
+                    <div key={index} className="mb-4 rounded border">
+                      {/* Price header with collapse/expand toggle */}
+                      <div 
+                        className="p-3 bg-amber-50 flex justify-between items-center cursor-pointer"
+                        onClick={() => togglePriceExpand(index)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="font-medium">
+                            Price #{index + 1}: 
+                            {price.country && <span className="ml-2">{price.country}</span>}
+                            {price.airport?.length > 0 && (
+                              <span className="ml-2">
+                                ({price.airport.length} airport{price.airport.length !== 1 ? 's' : ''})
+                              </span>
+                            )}
+                            {price.startdate && (
+                              <span className="ml-2">
+                                {new Date(price.startdate).toLocaleDateString()}
+                              </span>
+                            )}
+                            {price.price > 0 && (
+                              <span className="ml-2 font-bold">
+                                £{price.price}
+                              </span>
+                            )}
+                          </div>
+                          {price.priceswitch && (
+                            <span className="bg-black text-white text-xs px-2 py-1 rounded">
+                              Off in website
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <button 
+                            type="button"
+                            className="text-red-600 hover:text-red-800"
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevent toggle when clicking delete
+                              if (window.confirm(`Are you sure you want to remove Price #${index + 1}?`)) {
+                                const updatedPrices = formData.prices.filter((_, i) => i !== index);
+                                setFormData({ ...formData, prices: updatedPrices });
+                                
+                                // Update pagination if needed
+                                const totalPages = Math.ceil(updatedPrices.length / pricesPagination.itemsPerPage);
+                                if (pricesPagination.currentPage > totalPages && totalPages > 0) {
+                                  setPricesPagination(prev => ({
+                                    ...prev,
+                                    currentPage: totalPages
+                                  }));
+                                }
+                              }
+                            }}
+                          >
+                            <TrashIcon className="h-5 w-5" />
+                          </button>
+                          <svg
+                            className={`h-5 w-5 transition-transform ${expandedPrices[index] ? "rotate-180" : ""}`}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+                      
+                      {/* Collapsible price content */}
+                      {expandedPrices[index] && (
+                        <div className="p-3 space-y-2">
+                          {/* Price Switch */}
+                          <div className="flex items-center">
+                            <Switch
+                              id={`priceswitch-${index}`}
+                              ripple={false}
+                              checked={price.priceswitch}
+                              onChange={(e) => {
+                                const updatedPrices = [...formData.prices];
+                                updatedPrices[index].priceswitch = e.target.checked;
+                                setFormData({ ...formData, prices: updatedPrices });
+                              }}
+                              className="h-full w-full checked:bg-black"
+                              containerProps={{
+                                className: "w-11 h-6",
+                              }}
+                              circleProps={{
+                                className: "before:hidden left-0.5 border-none",
+                              }}
+                            />
+                            <label className="ml-2" htmlFor={`priceswitch-${index}`}>
+                              Price Switch (turn switch to black for off in website)
+                            </label>
+                          </div>
 
-            <Button
-              variant="gradient"
-              color="blue"
-              onClick={() =>
-                setFormData({
-                  ...formData,
-                  prices: [
-                    ...formData.prices,
-                    {
-                      country: "",
-                      priceswitch: false,
-                      airport: [],
-                      hotel: "",
-                      startdate: "",
-                      enddate: "",
-                      price: 0,
-                      flightDetails: {
-                        outbound: {
-                          departureTime: "",
-                          arrivalTime: "",
-                          airline: "",
-                          flightNumber: "",
-                        },
-                        returnFlight: {
-                          departureTime: "",
-                          arrivalTime: "",
-                          airline: "",
-                          flightNumber: "",
-                        },
-                      },
-                    },
-                  ],
-                })
-              }
-            >
-              + Add Another Price
-            </Button>
+                          <div className="grid grid-cols-1 gap-2 p-2 md:grid-cols-3">
+                            <Select
+                              label="Country"
+                              value={price.country}
+                              onChange={(value) => {
+                                const updatedPrices = [...formData.prices];
+                                updatedPrices[index].country = value;
+                                setFormData({ ...formData, prices: updatedPrices });
+                              }}
+                              required
+                            >
+                              {["UK", "USA", "Canada"].map((country) => (
+                                <Option key={country} value={country}>
+                                  {country}
+                                </Option>
+                              ))}
+                            </Select>
+
+                            <div className="relative">
+                              <button
+                                type="button"
+                                className="w-full flex items-center justify-between bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded"
+                                onClick={() => togglePriceDropdown(index, 'airports')}
+                              >
+                                <span className="text-left">
+                                  {formData.prices[index].airport.length > 0
+                                    ? `${formData.prices[index].airport.length} airport(s) selected`
+                                    : "Select Airports"}
+                                </span>
+                                <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                              </button>
+                              
+                              {customDropdownOpen.priceAirports[index]?.airports && (
+                                <>
+                                  <div 
+                                    className="absolute z-[100000] mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-64 overflow-hidden flex flex-col"
+                                  >
+                                    {/* Search input */}
+                                    <div className="p-2 border-b sticky top-0 bg-white">
+                                      <input
+                                        type="text"
+                                        className="w-full p-2 border border-gray-300 rounded-md"
+                                        placeholder="Search airports..."
+                                        value={dropdownSearch.priceAirports[index]?.airports || ''}
+                                        onChange={(e) => handleSearchChange('airports', e.target.value, index)}
+                                      />
+                                    </div>
+                                    
+                                    {/* Options list with scroll */}
+                                    <div className="overflow-y-auto max-h-48">
+                                      {airports
+                                        .filter(airport => {
+                                          const searchText = dropdownSearch.priceAirports[index]?.airports || '';
+                                          return airport.name.toLowerCase().includes(searchText.toLowerCase()) ||
+                                                 airport.code.toLowerCase().includes(searchText.toLowerCase());
+                                        })
+                                        .map((airport) => (
+                                          <div 
+                                            key={airport._id}
+                                            className="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer"
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              id={`airport-${index}-${airport._id}`}
+                                              checked={price.airport?.includes(airport._id)}
+                                              onChange={(e) => {
+                                                const isChecked = e.target.checked;
+                                                const updatedPrices = [...formData.prices];
+                                                const updatedAirports = isChecked
+                                                  ? [
+                                                      ...(updatedPrices[index].airport || []),
+                                                      airport._id,
+                                                    ]
+                                                  : (updatedPrices[index].airport || []).filter(
+                                                      (id) => id !== airport._id,
+                                                    );
+
+                                                updatedPrices[index] = {
+                                                  ...updatedPrices[index],
+                                                  airport: updatedAirports,
+                                                };
+
+                                                setFormData({
+                                                  ...formData,
+                                                  prices: updatedPrices,
+                                                });
+                                              }}
+                                              className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                                            />
+                                            <label 
+                                              htmlFor={`airport-${index}-${airport._id}`}
+                                              className="ml-2 text-sm text-gray-700 cursor-pointer flex-1"
+                                            >
+                                              {airport.name} ({airport.code})
+                                            </label>
+                                          </div>
+                                        ))}
+                                    </div>
+                                  </div>
+                                  <div 
+                                    className="fixed inset-0 z-[10000]" 
+                                    onClick={() => togglePriceDropdown(index, 'airports')}
+                                  ></div>
+                                </>
+                              )}
+                            </div>
+
+                            <Select
+                              label="Hotel"
+                              value={
+                                price.hotel && typeof price.hotel === "object"
+                                  ? price.hotel._id
+                                  : price.hotel
+                              }
+                              onChange={(value) => {
+                                const updatedPrices = [...formData.prices];
+                                updatedPrices[index].hotel = value;
+                                setFormData({ ...formData, prices: updatedPrices });
+                              }}
+                              required
+                            >
+                              {hotels.map((hotel) => (
+                                <Option key={hotel._id} value={hotel._id}>
+                                  {hotel.name}
+                                </Option>
+                              ))}
+                            </Select>
+                          </div>
+
+                          <div className="grid grid-cols-1 gap-2 p-2 md:grid-cols-3">
+                            <Input
+                              label="Start Date"
+                              type="date"
+                              min={minStartStr}
+                              value={price.startdate}
+                              onChange={(e) => {
+                                const updatedPrices = [...formData.prices];
+                                updatedPrices[index].startdate = e.target.value;
+                                if (
+                                  updatedPrices[index].enddate &&
+                                  new Date(updatedPrices[index].enddate) <
+                                    new Date(e.target.value)
+                                ) {
+                                  updatedPrices[index].enddate = e.target.value;
+                                }
+                                setFormData({ ...formData, prices: updatedPrices });
+                                validateDateRange(updatedPrices[index], formData.days);
+                              }}
+                              required
+                            />
+                            <Input
+                              label="End Date"
+                              type="date"
+                              min={price.startdate || minStartStr} // Prevent end date before start
+                              value={price.enddate}
+                              onChange={(e) => {
+                                const updatedPrices = [...formData.prices];
+                                updatedPrices[index].enddate = e.target.value;
+                                setFormData({ ...formData, prices: updatedPrices });
+                                validateDateRange(updatedPrices[index], formData.days);
+                              }}
+                              required
+                            />
+                            <Input
+                              label="Price"
+                              type="number"
+                              value={price.price === 0 ? "" : price.price}
+                              onChange={(e) => {
+                                const updatedPrices = [...formData.prices];
+                                updatedPrices[index].price = Number(e.target.value);
+                                setFormData({ ...formData, prices: updatedPrices });
+                              }}
+                              required
+                            />
+                          </div>
+
+                          {/* Flight Details */}
+                          <Typography variant="small" color="blue-gray">
+                            Outbound Flight
+                          </Typography>
+                          <div className="grid grid-cols-1 gap-2 p-2 md:grid-cols-2">
+                            <Input
+                              label="Departure Time"
+                              type="time"
+                              value={price.flightDetails.outbound.departureTime}
+                              onChange={(e) => {
+                                const updatedPrices = [...formData.prices];
+                                updatedPrices[
+                                  index
+                                ].flightDetails.outbound.departureTime = e.target.value;
+                                setFormData({ ...formData, prices: updatedPrices });
+                              }}
+                            />
+                            <Input
+                              label="Arrival Time"
+                              type="time"
+                              value={price.flightDetails.outbound.arrivalTime}
+                              onChange={(e) => {
+                                const updatedPrices = [...formData.prices];
+                                updatedPrices[index].flightDetails.outbound.arrivalTime =
+                                  e.target.value;
+                                setFormData({ ...formData, prices: updatedPrices });
+                              }}
+                            />
+                            <Input
+                              label="Airline"
+                              value={price.flightDetails.outbound.airline}
+                              onChange={(e) => {
+                                const updatedPrices = [...formData.prices];
+                                updatedPrices[index].flightDetails.outbound.airline =
+                                  e.target.value;
+                                setFormData({ ...formData, prices: updatedPrices });
+                              }}
+                            />
+                            <Input
+                              label="Flight Number"
+                              value={price.flightDetails.outbound.flightNumber}
+                              onChange={(e) => {
+                                const updatedPrices = [...formData.prices];
+                                updatedPrices[index].flightDetails.outbound.flightNumber =
+                                  e.target.value;
+                                setFormData({ ...formData, prices: updatedPrices });
+                              }}
+                            />
+                          </div>
+
+                          <Typography variant="small" color="blue-gray">
+                            Return Flight
+                          </Typography>
+                          <div className="grid grid-cols-1 gap-2 p-2 md:grid-cols-2">
+                            <Input
+                              label="Departure Time"
+                              type="time"
+                              value={price.flightDetails.returnFlight.departureTime}
+                              onChange={(e) => {
+                                const updatedPrices = [...formData.prices];
+                                updatedPrices[
+                                  index
+                                ].flightDetails.returnFlight.departureTime = e.target.value;
+                                setFormData({ ...formData, prices: updatedPrices });
+                              }}
+                            />
+                            <Input
+                              label="Arrival Time"
+                              type="time"
+                              value={price.flightDetails.returnFlight.arrivalTime}
+                              onChange={(e) => {
+                                const updatedPrices = [...formData.prices];
+                                updatedPrices[
+                                  index
+                                ].flightDetails.returnFlight.arrivalTime = e.target.value;
+                                setFormData({ ...formData, prices: updatedPrices });
+                              }}
+                            />
+                            <Input
+                              label="Airline"
+                              value={price.flightDetails.returnFlight.airline}
+                              onChange={(e) => {
+                                const updatedPrices = [...formData.prices];
+                                updatedPrices[index].flightDetails.returnFlight.airline =
+                                  e.target.value;
+                                setFormData({ ...formData, prices: updatedPrices });
+                              }}
+                            />
+                            <Input
+                              label="Flight Number"
+                              value={price.flightDetails.returnFlight.flightNumber}
+                              onChange={(e) => {
+                                const updatedPrices = [...formData.prices];
+                                updatedPrices[
+                                  index
+                                ].flightDetails.returnFlight.flightNumber = e.target.value;
+                                setFormData({ ...formData, prices: updatedPrices });
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
+
             {/* Checkboxes for Deal Features */}
             <div className="grid grid-cols-3">
               <div className="flex items-center">
@@ -2174,14 +2356,96 @@ export const ManageDeals = () => {
                 </CardHeader>
 
                 <CardBody className="space-y-6 p-4">
-                  {currentDeal.prices && currentDeal.prices.length > 0 ? (
-                    currentDeal.prices.map((price, pIndex) => {
-                      const isExpanded = expandedIndices.includes(pIndex);
-                      return (
-                        <div
-                          key={pIndex}
-                          className="space-y-3 rounded-lg border border-gray-300 bg-white p-4"
+                  {/* Pagination controls for prices */}
+                  {currentDeal.prices && currentDeal.prices.length > 0 && (
+                    <div className="flex justify-between items-center mb-4">
+                      <div>
+                        <select 
+                          className="border border-amber-400 rounded px-2 py-1 text-sm bg-amber-50"
+                          value={viewPricesPagination.itemsPerPage}
+                          onChange={(e) => setViewPricesPagination(prev => ({ 
+                            ...prev, 
+                            itemsPerPage: parseInt(e.target.value),
+                            currentPage: 1 // Reset to first page when changing items per page
+                          }))}
                         >
+                          <option value={10000}>None (Show All)</option>
+                          <option value={5}>5 per page</option>
+                          <option value={10}>10 per page</option>
+                          <option value={20}>20 per page</option>
+                          <option value={50}>50 per page</option>
+                        </select>
+                      </div>
+                      
+                      {currentDeal.prices.length > viewPricesPagination.itemsPerPage && (
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            className="bg-amber-100 hover:bg-amber-200 px-3 py-1 rounded disabled:opacity-50"
+                            disabled={viewPricesPagination.currentPage === 1}
+                            onClick={() => handleViewPricesPageChange(viewPricesPagination.currentPage - 1)}
+                          >
+                            &laquo;
+                          </button>
+                          
+                          {Array.from({ length: Math.ceil(currentDeal.prices.length / viewPricesPagination.itemsPerPage) }, (_, i) => i + 1)
+                            .filter(page => {
+                              const currentPage = viewPricesPagination.currentPage;
+                              const totalPages = Math.ceil(currentDeal.prices.length / viewPricesPagination.itemsPerPage);
+                              // Always show first and last page
+                              if (page === 1 || page === totalPages) return true;
+                              // Show pages around current page
+                              if (page >= currentPage - 1 && page <= currentPage + 1) return true;
+                              return false;
+                            })
+                            .map((page, i, filteredPages) => (
+                              <React.Fragment key={page}>
+                                {i > 0 && filteredPages[i - 1] + 1 !== page && (
+                                  <span className="px-3 py-1">...</span>
+                                )}
+                                <button
+                                  type="button"
+                                  className={`px-3 py-1 rounded ${
+                                    page === viewPricesPagination.currentPage
+                                      ? "bg-amber-500 text-white"
+                                      : "bg-amber-50 hover:bg-amber-100"
+                                  }`}
+                                  onClick={() => handleViewPricesPageChange(page)}
+                                >
+                                  {page}
+                                </button>
+                              </React.Fragment>
+                            ))
+                          }
+                          
+                          <button
+                            type="button"
+                            className="bg-amber-100 hover:bg-amber-200 px-3 py-1 rounded disabled:opacity-50"
+                            disabled={viewPricesPagination.currentPage === Math.ceil(currentDeal.prices.length / viewPricesPagination.itemsPerPage)}
+                            onClick={() => handleViewPricesPageChange(viewPricesPagination.currentPage + 1)}
+                          >
+                            &raquo;
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {currentDeal.prices && currentDeal.prices.length > 0 ? (
+                    currentDeal.prices
+                      .slice(
+                        (viewPricesPagination.currentPage - 1) * viewPricesPagination.itemsPerPage,
+                        viewPricesPagination.currentPage * viewPricesPagination.itemsPerPage
+                      )
+                      .map((price, pIndexInPage) => {
+                        // Calculate actual index in the full prices array
+                        const pIndex = (viewPricesPagination.currentPage - 1) * viewPricesPagination.itemsPerPage + pIndexInPage;
+                        const isExpanded = expandedIndices.includes(pIndex);
+                        return (
+                          <div
+                            key={pIndex}
+                            className="space-y-3 rounded-lg border border-amber-300 bg-amber-50 p-4"
+                          >
                           <Typography
                             variant="subtitle1"
                             className="text-deep-orange-500"
