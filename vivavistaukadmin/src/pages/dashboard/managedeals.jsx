@@ -112,6 +112,14 @@ export const ManageDeals = () => {
     priceAirports: {} // Will store airport dropdown states by price index
   });
 
+  // Add search state for each dropdown
+  const [dropdownSearch, setDropdownSearch] = useState({
+    destinations: '',
+    holidayCategories: '',
+    hotels: '',
+    priceAirports: {}
+  });
+
   useEffect(() => {
     fetchDeals();
     fetchDestinations();
@@ -570,6 +578,29 @@ export const ManageDeals = () => {
     }));
   };
 
+  // Update the handleSearchChange function to update search state
+  const handleSearchChange = (dropdown, value, index = null) => {
+    if (index !== null) {
+      // For price-specific dropdowns
+      setDropdownSearch(prev => ({
+        ...prev,
+        priceAirports: {
+          ...prev.priceAirports,
+          [index]: {
+            ...prev.priceAirports[index],
+            [dropdown]: value
+          }
+        }
+      }));
+    } else {
+      // For regular dropdowns
+      setDropdownSearch(prev => ({
+        ...prev,
+        [dropdown]: value
+      }));
+    }
+  };
+
   return (
     <div className="h-screen w-full overflow-hidden px-4 py-6">
       {alert.message && (
@@ -870,43 +901,62 @@ export const ManageDeals = () => {
               {customDropdownOpen.destinations && (
                 <>
                   <div 
-                    className="absolute z-[100000] mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-64 overflow-y-auto"
+                    className="absolute z-[100000] mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-64 overflow-hidden flex flex-col"
                   >
-                    {destinations
-                      .filter(destination => destination._id !== formData.destination)
-                      .map((destination) => (
-                        <div 
-                          key={destination._id}
-                          className="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            id={`destination-${destination._id}`}
-                            checked={formData.destinations.some(id => 
-                              id === destination._id || id.toString() === destination._id.toString()
-                            )}
-                            onChange={(e) => {
-                              const isChecked = e.target.checked;
-                              const updatedDestinations = isChecked
-                                ? [...formData.destinations, destination._id]
-                                : formData.destinations.filter(
-                                    id => id.toString() !== destination._id.toString()
-                                  );
-                              setFormData({
-                                ...formData,
-                                destinations: updatedDestinations,
-                              });
-                            }}
-                            className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
-                          />
-                          <label 
-                            htmlFor={`destination-${destination._id}`}
-                            className="ml-2 text-sm text-gray-700 cursor-pointer flex-1"
+                    {/* Search input */}
+                    <div className="p-2 border-b sticky top-0 bg-white">
+                      <input
+                        type="text"
+                        className="w-full p-2 border border-gray-300 rounded-md"
+                        placeholder="Search destinations..."
+                        value={dropdownSearch.destinations}
+                        onChange={(e) => handleSearchChange('destinations', e.target.value)}
+                      />
+                    </div>
+                    
+                    {/* Options list with scroll */}
+                    <div className="overflow-y-auto max-h-48">
+                      {destinations
+                        .filter(destination => 
+                          // Filter out the primary destination
+                          destination._id !== formData.destination &&
+                          // Filter by search text
+                          destination.name.toLowerCase().includes(dropdownSearch.destinations.toLowerCase())
+                        )
+                        .map((destination) => (
+                          <div 
+                            key={destination._id}
+                            className="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer"
                           >
-                            {destination.name}
-                          </label>
-                        </div>
-                      ))}
+                            <input
+                              type="checkbox"
+                              id={`destination-${destination._id}`}
+                              checked={formData.destinations.some(id => 
+                                id === destination._id || id.toString() === destination._id.toString()
+                              )}
+                              onChange={(e) => {
+                                const isChecked = e.target.checked;
+                                const updatedDestinations = isChecked
+                                  ? [...formData.destinations, destination._id]
+                                  : formData.destinations.filter(
+                                      id => id.toString() !== destination._id.toString()
+                                    );
+                                setFormData({
+                                  ...formData,
+                                  destinations: updatedDestinations,
+                                });
+                              }}
+                              className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+                            />
+                            <label 
+                              htmlFor={`destination-${destination._id}`}
+                              className="ml-2 text-sm text-gray-700 cursor-pointer flex-1"
+                            >
+                              {destination.name}
+                            </label>
+                          </div>
+                        ))}
+                    </div>
                   </div>
                   <div 
                     className="fixed inset-0 z-[10000]" 
@@ -939,39 +989,57 @@ export const ManageDeals = () => {
               {customDropdownOpen.holidayCategories && (
                 <>
                   <div 
-                    className="absolute z-[100000] mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-64 overflow-y-auto"
+                    className="absolute z-[100000] mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-64 overflow-hidden flex flex-col"
                   >
-                    {holidaycategories.map((holidaycategorie) => (
-                      <div 
-                        key={holidaycategorie._id}
-                        className="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          id={`holiday-${holidaycategorie._id}`}
-                          checked={formData.holidaycategories.includes(holidaycategorie._id)}
-                          onChange={(e) => {
-                            const isChecked = e.target.checked;
-                            const updatedHolidaysCategories = isChecked
-                              ? [...formData.holidaycategories, holidaycategorie._id]
-                              : formData.holidaycategories.filter(
-                                  (id) => id !== holidaycategorie._id
-                                );
-                            setFormData({
-                              ...formData,
-                              holidaycategories: updatedHolidaysCategories,
-                            });
-                          }}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
-                        <label 
-                          htmlFor={`holiday-${holidaycategorie._id}`}
-                          className="ml-2 text-sm text-gray-700 cursor-pointer flex-1"
-                        >
-                          {holidaycategorie.name}
-                        </label>
-                      </div>
-                    ))}
+                    {/* Search input */}
+                    <div className="p-2 border-b sticky top-0 bg-white">
+                      <input
+                        type="text"
+                        className="w-full p-2 border border-gray-300 rounded-md"
+                        placeholder="Search categories..."
+                        value={dropdownSearch.holidayCategories}
+                        onChange={(e) => handleSearchChange('holidayCategories', e.target.value)}
+                      />
+                    </div>
+                    
+                    {/* Options list with scroll */}
+                    <div className="overflow-y-auto max-h-48">
+                      {holidaycategories
+                        .filter(holidaycategorie => 
+                          holidaycategorie.name.toLowerCase().includes(dropdownSearch.holidayCategories.toLowerCase())
+                        )
+                        .map((holidaycategorie) => (
+                          <div 
+                            key={holidaycategorie._id}
+                            className="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              id={`holiday-${holidaycategorie._id}`}
+                              checked={formData.holidaycategories.includes(holidaycategorie._id)}
+                              onChange={(e) => {
+                                const isChecked = e.target.checked;
+                                const updatedHolidaysCategories = isChecked
+                                  ? [...formData.holidaycategories, holidaycategorie._id]
+                                  : formData.holidaycategories.filter(
+                                      (id) => id !== holidaycategorie._id
+                                    );
+                                setFormData({
+                                  ...formData,
+                                  holidaycategories: updatedHolidaysCategories,
+                                });
+                              }}
+                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            />
+                            <label 
+                              htmlFor={`holiday-${holidaycategorie._id}`}
+                              className="ml-2 text-sm text-gray-700 cursor-pointer flex-1"
+                            >
+                              {holidaycategorie.name}
+                            </label>
+                          </div>
+                        ))}
+                    </div>
                   </div>
                   <div 
                     className="fixed inset-0 z-[10000]" 
@@ -1032,34 +1100,52 @@ export const ManageDeals = () => {
               {customDropdownOpen.hotels && (
                 <>
                   <div 
-                    className="absolute z-[100000] mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-64 overflow-y-auto"
+                    className="absolute z-[100000] mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-64 overflow-hidden flex flex-col"
                   >
-                    {hotels.map((hotel) => (
-                      <div 
-                        key={hotel._id}
-                        className="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          id={`hotel-${hotel._id}`}
-                          checked={formData.hotels.includes(hotel._id)}
-                          onChange={(e) => {
-                            const isChecked = e.target.checked;
-                            const updatedHotels = isChecked
-                              ? [...formData.hotels, hotel._id]
-                              : formData.hotels.filter((id) => id !== hotel._id);
-                            setFormData({ ...formData, hotels: updatedHotels });
-                          }}
-                          className="h-4 w-4 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
-                        />
-                        <label 
-                          htmlFor={`hotel-${hotel._id}`}
-                          className="ml-2 text-sm text-gray-700 cursor-pointer flex-1"
-                        >
-                          {hotel.name}
-                        </label>
-                      </div>
-                    ))}
+                    {/* Search input */}
+                    <div className="p-2 border-b sticky top-0 bg-white">
+                      <input
+                        type="text"
+                        className="w-full p-2 border border-gray-300 rounded-md"
+                        placeholder="Search hotels..."
+                        value={dropdownSearch.hotels}
+                        onChange={(e) => handleSearchChange('hotels', e.target.value)}
+                      />
+                    </div>
+                    
+                    {/* Options list with scroll */}
+                    <div className="overflow-y-auto max-h-48">
+                      {hotels
+                        .filter(hotel => 
+                          hotel.name.toLowerCase().includes(dropdownSearch.hotels.toLowerCase())
+                        )
+                        .map((hotel) => (
+                          <div 
+                            key={hotel._id}
+                            className="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              id={`hotel-${hotel._id}`}
+                              checked={formData.hotels.includes(hotel._id)}
+                              onChange={(e) => {
+                                const isChecked = e.target.checked;
+                                const updatedHotels = isChecked
+                                  ? [...formData.hotels, hotel._id]
+                                  : formData.hotels.filter((id) => id !== hotel._id);
+                                setFormData({ ...formData, hotels: updatedHotels });
+                              }}
+                              className="h-4 w-4 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
+                            />
+                            <label 
+                              htmlFor={`hotel-${hotel._id}`}
+                              className="ml-2 text-sm text-gray-700 cursor-pointer flex-1"
+                            >
+                              {hotel.name}
+                            </label>
+                          </div>
+                        ))}
+                    </div>
                   </div>
                   <div 
                     className="fixed inset-0 z-[10000]" 
@@ -1134,49 +1220,69 @@ export const ManageDeals = () => {
                     {customDropdownOpen.priceAirports[index]?.airports && (
                       <>
                         <div 
-                          className="absolute z-[100000] mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-64 overflow-y-auto"
+                          className="absolute z-[100000] mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-64 overflow-hidden flex flex-col"
                         >
-                          {airports.map((airport) => (
-                            <div 
-                              key={airport._id}
-                              className="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer"
-                            >
-                              <input
-                                type="checkbox"
-                                id={`airport-${index}-${airport._id}`}
-                                checked={price.airport?.includes(airport._id)}
-                                onChange={(e) => {
-                                  const isChecked = e.target.checked;
-                                  const updatedPrices = [...formData.prices];
-                                  const updatedAirports = isChecked
-                                    ? [
-                                        ...(updatedPrices[index].airport || []),
-                                        airport._id,
-                                      ]
-                                    : (updatedPrices[index].airport || []).filter(
-                                        (id) => id !== airport._id,
-                                      );
+                          {/* Search input */}
+                          <div className="p-2 border-b sticky top-0 bg-white">
+                            <input
+                              type="text"
+                              className="w-full p-2 border border-gray-300 rounded-md"
+                              placeholder="Search airports..."
+                              value={dropdownSearch.priceAirports[index]?.airports || ''}
+                              onChange={(e) => handleSearchChange('airports', e.target.value, index)}
+                            />
+                          </div>
+                          
+                          {/* Options list with scroll */}
+                          <div className="overflow-y-auto max-h-48">
+                            {airports
+                              .filter(airport => {
+                                const searchText = dropdownSearch.priceAirports[index]?.airports || '';
+                                return airport.name.toLowerCase().includes(searchText.toLowerCase()) ||
+                                       airport.code.toLowerCase().includes(searchText.toLowerCase());
+                              })
+                              .map((airport) => (
+                                <div 
+                                  key={airport._id}
+                                  className="flex items-center gap-2 p-2 hover:bg-gray-100 cursor-pointer"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    id={`airport-${index}-${airport._id}`}
+                                    checked={price.airport?.includes(airport._id)}
+                                    onChange={(e) => {
+                                      const isChecked = e.target.checked;
+                                      const updatedPrices = [...formData.prices];
+                                      const updatedAirports = isChecked
+                                        ? [
+                                            ...(updatedPrices[index].airport || []),
+                                            airport._id,
+                                          ]
+                                        : (updatedPrices[index].airport || []).filter(
+                                            (id) => id !== airport._id,
+                                          );
 
-                                  updatedPrices[index] = {
-                                    ...updatedPrices[index],
-                                    airport: updatedAirports,
-                                  };
+                                      updatedPrices[index] = {
+                                        ...updatedPrices[index],
+                                        airport: updatedAirports,
+                                      };
 
-                                  setFormData({
-                                    ...formData,
-                                    prices: updatedPrices,
-                                  });
-                                }}
-                                className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                              />
-                              <label 
-                                htmlFor={`airport-${index}-${airport._id}`}
-                                className="ml-2 text-sm text-gray-700 cursor-pointer flex-1"
-                              >
-                                {airport.name} ({airport.code})
-                              </label>
-                            </div>
-                          ))}
+                                      setFormData({
+                                        ...formData,
+                                        prices: updatedPrices,
+                                      });
+                                    }}
+                                    className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                                  />
+                                  <label 
+                                    htmlFor={`airport-${index}-${airport._id}`}
+                                    className="ml-2 text-sm text-gray-700 cursor-pointer flex-1"
+                                  >
+                                    {airport.name} ({airport.code})
+                                  </label>
+                                </div>
+                              ))}
+                          </div>
                         </div>
                         <div 
                           className="fixed inset-0 z-[10000]" 
