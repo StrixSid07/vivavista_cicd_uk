@@ -119,6 +119,67 @@ const getUsers = async (req, res) => {
   }
 };
 
+// ✅ Admin: Update User (Full Update)
+const updateUser = async (req, res) => {
+  try {
+    const { name, email, password, role } = req.body;
+    
+    // Validate role if provided
+    if (role && !["user", "admin"].includes(role)) {
+      return res.status(400).json({ message: "Invalid role" });
+    }
+    
+    // Find user by ID
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    
+    // Check if email is being changed and if it's already in use by another user
+    if (email && email !== user.email) {
+      const existingUser = await User.findOne({ email });
+      if (existingUser && existingUser._id.toString() !== req.params.id) {
+        return res.status(400).json({ message: "Email already in use by another user" });
+      }
+    }
+    
+    // Update user fields
+    if (name) user.name = name;
+    if (email) user.email = email;
+    if (role) user.role = role;
+    
+    // Only update password if provided
+    if (password && password.trim() !== '') {
+      // Validate password length
+      if (password.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters" });
+      }
+      
+      try {
+        // Hash the new password with a higher salt round for better security
+        user.password = await bcrypt.hash(password, 12);
+        console.log("Password updated successfully for user:", user._id);
+      } catch (hashError) {
+        console.error("Error hashing password:", hashError);
+        return res.status(500).json({ message: "Error updating password" });
+      }
+    }
+    
+    // Save updated user
+    await user.save();
+    
+    // Return updated user without password
+    const updatedUser = await User.findById(req.params.id).select("-password");
+    
+    res.json({ 
+      message: "User updated successfully", 
+      user: updatedUser,
+      passwordUpdated: password && password.trim() !== '' ? true : false
+    });
+  } catch (error) {
+    console.error("Error updating user:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 // ✅ Admin: Update User Role
 const updateUserRole = async (req, res) => {
   try {
@@ -158,6 +219,7 @@ module.exports = {
   loginUser,
   getUserProfile,
   getUsers,
+  updateUser,
   updateUserRole,
   deleteUser,
 };

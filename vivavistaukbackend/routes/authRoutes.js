@@ -5,6 +5,7 @@ const {
   loginUser,
   getUserProfile,
   getUsers,
+  updateUser,
   updateUserRole,
   deleteUser,
 } = require("../controllers/authController");
@@ -113,7 +114,7 @@ router.get("/users", getUsers);
  * @swagger
  * /api/auth/users/{id}:
  *   put:
- *     summary: Update user role (Admin)
+ *     summary: Update user (Admin)
  *     tags: [Auth]
  *     security:
  *       - BearerAuth: []
@@ -131,17 +132,27 @@ router.get("/users", getUsers);
  *           schema:
  *             type: object
  *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "John Doe"
+ *               email:
+ *                 type: string
+ *                 example: "john@example.com"
+ *               password:
+ *                 type: string
+ *                 example: "newpassword123"
+ *                 description: "Optional. Leave empty to keep current password."
  *               role:
  *                 type: string
  *                 enum: [user, admin]
  *                 example: "admin"
  *     responses:
  *       200:
- *         description: User role updated
+ *         description: User updated
  *       403:
  *         description: Admin access required
  */
-router.put("/users/:id", protect, isAdmin, updateUserRole);
+router.put("/users/:id", protect, isAdmin, updateUser);
 
 /**
  * @swagger
