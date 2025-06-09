@@ -7,3 +7,4 @@ export { default as FilterElement } from "./FilterElement";
 export { default as FilterPageSlides } from "./FilterPageSlides";
 export { default as Map } from "./Map";
 export { default as Blog } from "./Blog";
+export { default as Breadcrumbs } from "./Breadcrumbs";

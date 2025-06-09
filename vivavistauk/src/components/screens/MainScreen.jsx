@@ -3,6 +3,7 @@ import { Home, NewAdded, Looking } from "../pages";
 import { useNavigate } from "react-router-dom";
 import SearchBar from "../elements/SearchBar";
 import CountrySlider from "../elements/CountrySlider";
+import MulticenterDealsSection from "../elements/MulticenterDealsSection";
 import Autoslider from "../elements/Autoslider";
 import { airports, roomOptions, destinations } from "../contents/searchbar";
 import { selectPackage } from "../contents/selectpackage";
@@ -28,6 +29,7 @@ const MainScreen = () => {
         setData({
           featuredDeals: response.data.featuredDeals,
           destination: response.data.destinations,
+          multicenterDeals: response.data.multicenterDeals,
           reviews: response.data.reviews,
           blogs: response.data.blogs,
         });
@@ -112,6 +114,12 @@ const MainScreen = () => {
         {data?.destination && <CountrySlider destinations={data.destination} />}
         {/* <CountrySlider destinations={destinationsData || []} /> */}
       </div>
+      
+      {/* Multicenter Deals Section */}
+      {/* {data?.multicenterDeals && data.multicenterDeals.length > 0 && (
+        <MulticenterDealsSection deals={data.multicenterDeals} />
+      )} */}
+      
       <Looking />
       <div className="md:p-0 mt-3 md:mt-10">
         <Autoslider slides={autoSlides} />

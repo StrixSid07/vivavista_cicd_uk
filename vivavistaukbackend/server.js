@@ -100,6 +100,7 @@ app.use("/api/boardbasis", require("./routes/boardbasisRoutes"));
 app.use("/api/mail", require("./routes/contactRoutes"));
 app.use("/api/newslatter", require("./routes/newslatterXLRoutes"));
 app.use("/api/admindealsexternal", require("./routes/adminDeals"));
+app.use("/api/multicenter", require("./routes/multicenterRoutes"));
 // ✅ Apply Caching to Deals API
 const cacheMiddleware = async (req, res, next) => {
   const key = req.originalUrl;

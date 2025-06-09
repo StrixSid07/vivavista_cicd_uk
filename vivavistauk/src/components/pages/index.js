@@ -18,6 +18,7 @@ import Packages from "./Packages";
 import Holidays from "./Holidays";
 import Destinations from "./Destinations";
 import GroupBookingForm from "./GroupBookingForm";
+import MulticenterPage from "./MulticenterPage";
 
 export {
   Home,
@@ -39,4 +40,5 @@ export {
   Holidays,
   Destinations,
   GroupBookingForm,
+  MulticenterPage,
 };

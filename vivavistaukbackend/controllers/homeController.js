@@ -204,7 +204,31 @@ exports.getHomepageData = async (req, res) => {
           },
         ],
       });
-    // console.log(destinations);
+
+    // Get multicenter deals (has multiple destinations)
+    const multicenterDeals = await Deal.find({ 
+      destinations: { $exists: true, $ne: [] } // Find deals with non-empty destinations array
+    })
+      .select("title images isHotdeal isTopDeal destination destinations prices days tag boardBasis")
+      .populate({
+        path: "destination",
+        select: "name image",
+      })
+      .populate({
+        path: "destinations",
+        select: "name",
+      })
+      .populate({
+        path: "boardBasis",
+        select: "name",
+      })
+      .populate({
+        path: "prices.hotel",
+        select: "name tripAdvisorRating tripAdvisorReviews",
+      })
+      .sort({ updatedAt: -1 })
+      .limit(6); // Limit to 6 multicenter deals for homepage
+    
     // Get reviews (limit 6)
     const reviews = await Review.find()
       .select("name comment rating createdAt")
@@ -220,6 +244,7 @@ exports.getHomepageData = async (req, res) => {
     res.json({
       featuredDeals,
       destinations,
+      multicenterDeals,
       reviews,
       blogs,
     });

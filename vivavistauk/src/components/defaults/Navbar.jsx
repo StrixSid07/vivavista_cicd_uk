@@ -84,6 +84,7 @@ const Navbar = () => {
         href: `/destinations/${slugify(name)}`,
       })),
     },
+    // { name: "Multicenter", href: "/multicenter", icon: earth },
   ];
 
   const navItemsForMobile = [
@@ -109,6 +110,7 @@ const Navbar = () => {
         href: `/destinations/${slugify(name)}`,
       })),
     },
+    // { name: "Multicenter", href: "/multicenter" },
   ];
 
   const flagUrls = {

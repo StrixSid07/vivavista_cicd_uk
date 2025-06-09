@@ -23,6 +23,7 @@ import {
   GroupBookingForm,
   Holidays,
   Destinations,
+  MulticenterPage,
 } from "./pages";
 import { MainScreen } from "./screens";
 import TravelFilter from "./elements/TravelFilter";
@@ -107,6 +108,7 @@ const Main = () => {
             <Route path="/packages" element={<Packages />} />
             <Route path="/holidays/:name" element={<Holidays />} />
             <Route path="/destinations/:name" element={<Destinations />} />
+            <Route path="/multicenter" element={<MulticenterPage />} />
             <Route path="/groupbooking" element={<GroupBookingForm />} />
             <Route path="/ContactUs" element={<ContactUs />} />
             <Route path="/blog/:id" element={<BlogDetail />} />
