@@ -6,7 +6,8 @@ exports.getHotDeals = async (req, res) => {
     const deals = await Deal.find({ isHotDeal: true })
       .sort({ updatedAt: -1, createdAt: -1 }) // Sort by most recently updated, then created
       .populate("destination", "name")
-      .populate("boardBasis", "name");
+      .populate("boardBasis", "name")
+      .populate("destinations", "name");
 
     res.json(deals);
   } catch (error) {
@@ -78,8 +79,9 @@ exports.getTopDeals = async (req, res) => {
       .populate("prices.hotel")
       .populate("destination", "name")
       .populate("boardBasis", "name")
+      .populate("destinations", "name")
       .select(
-        "title destination description prices boardBasis days images isTopDeal isHotdeal updatedAt createdAt"
+        "title destination description prices boardBasis days images isTopDeal isHotdeal updatedAt createdAt destinations"
       );
 
     // Fetch Hot Deals (excluding already-included Top Deals by _id)
@@ -93,8 +95,9 @@ exports.getTopDeals = async (req, res) => {
       .populate("prices.hotel")
       .populate("destination", "name")
       .populate("boardBasis", "name")
+      .populate("destinations", "name")
       .select(
-        "title destination description prices boardBasis days images isTopDeal isHotdeal updatedAt createdAt"
+        "title destination description prices boardBasis days images isTopDeal isHotdeal updatedAt createdAt destinations"
       );
 
     // Combine: Top Deals first, then Hot Deals
@@ -138,7 +141,8 @@ exports.getTopDealsByDestination = async (req, res) => {
       .populate("destination")
       .populate("boardBasis")
       .populate("prices.hotel")
-      .populate("hotels");
+      .populate("hotels")
+      .populate("destinations", "name");
 
     // If no deals found, fetch from other destinations
     if (deals.length === 0) {
@@ -153,7 +157,8 @@ exports.getTopDealsByDestination = async (req, res) => {
         .populate("destination")
         .populate("boardBasis")
         .populate("prices.hotel")
-        .populate("hotels");
+        .populate("hotels")
+        .populate("destinations", "name");
     }
 
     return res.json(deals);

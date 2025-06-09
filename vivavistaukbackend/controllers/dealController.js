@@ -258,6 +258,8 @@ const getAllDeals = async (req, res) => {
       guests,
       sort,
       search,
+      category,
+      isHotdeal,
     } = req.query;
 
     // 🧠 Helper function to build the query object
@@ -268,6 +270,12 @@ const getAllDeals = async (req, res) => {
 
       // Destination filter
       if (useDestination && destination) query.destination = destination;
+      
+      // Holiday category filter
+      if (category) query.holidaycategories = category;
+      
+      // Hot deal filter
+      if (isHotdeal === 'true') query.isHotdeal = true;
 
       // Price range
       if (minPrice || maxPrice) {
@@ -318,7 +326,10 @@ const getAllDeals = async (req, res) => {
     const getDeals = async (query) => {
       return await Deal.find(query)
         .populate("destination")
-        .populate("destinations")
+        .populate({
+          path: "destinations",
+          select: "name", // Only populate destinations with the name field
+        })
         .populate("boardBasis", "name")
         .populate("hotels", "name tripAdvisorRating facilities location images")
         .populate({
@@ -428,7 +439,10 @@ const getDealById = async (req, res) => {
   try {
     const deal = await Deal.findById(req.params.id)
       .populate("destination")
-      .populate("destinations")
+      .populate({
+        path: "destinations",
+        select: "name", // Only populate destinations with the name field
+      })
       .populate({
         path: "holidaycategories",
         select: "name",
@@ -704,7 +718,10 @@ const getDealsByDestination = async (req, res) => {
       ]
     })
       .populate("destination")
-      .populate("destinations")
+      .populate({
+        path: "destinations",
+        select: "name", // Only populate destinations with the name field
+      })
       .populate("hotels");
 
     res.json(deals);

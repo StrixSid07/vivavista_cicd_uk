@@ -681,6 +681,14 @@ export const ManageDeals = () => {
                   >
                     <MapPinIcon className="mb-1 h-5 w-5" />
                     {deal.destination.name}
+                    {deal.destinations && deal.destinations.length > 0 && (
+                      <span className="text-sm font-normal">
+                        , {deal.destinations.map(dest => 
+                          typeof dest === 'object' ? dest.name : 
+                          destinations.find(d => d._id === dest)?.name || dest
+                        ).join(', ')}
+                      </span>
+                    )}
                   </Typography>
 
                   <Typography

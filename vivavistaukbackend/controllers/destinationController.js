@@ -157,15 +157,21 @@ exports.getFilterDealsByDestination = async (req, res) => {
         .json({ message: `Destination '${name}' not found` });
     }
 
-    // Fetch deals by destination ID, and populate prices.hotel
+    // Fetch deals where the destination is either:
+    // 1. The primary destination, OR
+    // 2. One of the destinations in the destinations array
     const deals = await Deal.find({
-      destination: destination._id,
+      $or: [
+        { destination: destination._id },
+        { destinations: destination._id }
+      ]
     })
-      .select("title destination images days prices tag isTopDeal isHotdeal")
+      .select("title destination images days prices tag isTopDeal isHotdeal destinations")
       .populate("holidaycategories", "name")
       .populate("boardBasis", "name")
       .populate("prices.hotel", "tripAdvisorRating tripAdvisorReviews")
-      .populate("destination", "name");
+      .populate("destination", "name")
+      .populate("destinations", "name");
 
     // Clean up prices array
     const cleanedDeals = deals.map((deal) => {
@@ -178,7 +184,8 @@ exports.getFilterDealsByDestination = async (req, res) => {
       return {
         _id: deal._id,
         title: deal.title,
-        destination: { name: destination.name },
+        destination: deal.destination,
+        destinations: deal.destinations,
         images: deal.images,
         days: deal.days,
         prices: cleanedPrices,

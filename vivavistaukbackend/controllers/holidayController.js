@@ -113,10 +113,11 @@ exports.getFilterDealsByHoliday = async (req, res) => {
     const deals = await Deal.find({
       holidaycategories: holidayCategory._id,
     })
-      .select("title images days prices tag isTopDeal isHotdeal")
+      .select("title images days prices tag isTopDeal isHotdeal destinations")
       .populate("destination", "name")
       .populate("boardBasis", "name")
-      .populate("prices.hotel", "tripAdvisorRating tripAdvisorReviews");
+      .populate("prices.hotel", "tripAdvisorRating tripAdvisorReviews")
+      .populate("destinations", "name");
 
     // Manually filter out unwanted fields from prices[]
     const cleanedDeals = deals.map((deal) => {
@@ -137,6 +138,7 @@ exports.getFilterDealsByHoliday = async (req, res) => {
         isTopDeal: deal.isTopDeal,
         isHotdeal: deal.isHotdeal,
         destination: deal.destination,
+        destinations: deal.destinations,
       };
     });
 

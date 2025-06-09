@@ -23,6 +23,30 @@ import { Base_Url } from "../../utils/Api";
 import { slugify } from "../../utils/slugify";
 import { holidays } from "../../assets";
 
+// Helper function to format destination text with multicenter support
+const formatDestinationText = (primaryDestination, additionalDestinations) => {
+  if (!additionalDestinations || !additionalDestinations.length) return primaryDestination;
+  
+  // Get the name of the primary destination
+  let result = primaryDestination;
+  
+  // Add the multicenter destinations with comma separator
+  const multiDestinations = additionalDestinations.map(dest => dest.name).join(", ");
+  
+  if (multiDestinations) {
+    // Combine with comma
+    const combined = `${result}, ${multiDestinations}`;
+    
+    // If the combined string is too long, truncate it
+    if (combined.length > 40) {
+      return `${result}, ${multiDestinations.substring(0, 25)}...`;
+    }
+    return combined;
+  }
+  
+  return result;
+};
+
 const Holidays = () => {
   const [holidayCategories, setHolidayCategories] = useState([]);
   useEffect(() => {
@@ -190,7 +214,7 @@ const Holidays = () => {
                         <div className="flex items-center gap-2 text-sm text-gray-700">
                           <MapPin className="w-4 h-4 text-indigo-500" />
                           <span className="font-medium">
-                            {deal.destination?.name}
+                            {formatDestinationText(deal.destination?.name, deal.destinations)}
                           </span>
                         </div>
 

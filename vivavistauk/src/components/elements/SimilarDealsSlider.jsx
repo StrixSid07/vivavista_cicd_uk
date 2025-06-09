@@ -5,6 +5,30 @@ import { FaArrowLeft, FaArrowRight } from "react-icons/fa";
 import DealCard from "./DealCard";
 import { Base_Url } from "../../utils/Api";
 
+// Helper function to format destination text with multicenter support
+const formatDestinationText = (primaryDestination, additionalDestinations) => {
+  if (!additionalDestinations || !additionalDestinations.length) return primaryDestination;
+  
+  // Get the name of the primary destination
+  let result = primaryDestination;
+  
+  // Add the multicenter destinations with comma separator
+  const multiDestinations = additionalDestinations.map(dest => dest.name).join(", ");
+  
+  if (multiDestinations) {
+    // Combine with comma
+    const combined = `${result}, ${multiDestinations}`;
+    
+    // If the combined string is too long, truncate it
+    if (combined.length > 40) {
+      return `${result}, ${multiDestinations.substring(0, 25)}...`;
+    }
+    return combined;
+  }
+  
+  return result;
+};
+
 export default function SimilarDealsSlider({ destinationId, dealId }) {
   const [deals, setDeals] = useState([]);
   const [currentImageIndex, setCurrentImageIndex] = useState([]);
@@ -88,7 +112,7 @@ export default function SimilarDealsSlider({ destinationId, dealId }) {
               images={deal.images}
               name={deal.title}
               price={deal.prices[0]?.price}
-              location={deal.destination?.name}
+              location={formatDestinationText(deal.destination?.name, deal.destinations)}
               packageDays={deal.days}
               rating={deal.prices[0]?.hotel?.tripAdvisorRating}
               reviews={deal.prices[0]?.hotel?.tripAdvisorReviews}
