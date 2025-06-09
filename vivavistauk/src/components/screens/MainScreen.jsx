@@ -116,9 +116,9 @@ const MainScreen = () => {
       </div>
       
       {/* Multicenter Deals Section */}
-      {/* {data?.multicenterDeals && data.multicenterDeals.length > 0 && (
+      {data?.multicenterDeals && data.multicenterDeals.length > 0 && (
         <MulticenterDealsSection deals={data.multicenterDeals} />
-      )} */}
+      )}
       
       <Looking />
       <div className="md:p-0 mt-3 md:mt-10">
