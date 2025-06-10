@@ -264,7 +264,7 @@ export function ManageTerms() {
         <DialogHeader className="text-base font-semibold">
           {currentTerm ? "Edit Term" : "Add Term"}
         </DialogHeader>
-        <DialogBody>
+        <DialogBody className="max-h-[70vh] overflow-y-auto scrollbar-thin scrollbar-track-gray-200 scrollbar-thumb-blue-500">
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
               <label className="block text-sm font-semibold text-gray-700">
@@ -288,6 +288,16 @@ export function ManageTerms() {
                 value={formData.content}
                 onChange={(content) => setFormData({ ...formData, content })}
                 className="rounded-md border text-base font-medium"
+                style={{ height: "300px", marginBottom: "60px" }}
+                modules={{
+                  toolbar: [
+                    [{ 'header': [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    ['link'],
+                    ['clean']
+                  ]
+                }}
                 required
               />
             </div>

@@ -293,7 +293,7 @@ export function ManageBlog() {
         </DialogHeader>
 
         {/* Make form scrollable inside DialogBody */}
-        <DialogBody className="max-h-[70vh] overflow-y-auto">
+        <DialogBody className="max-h-[70vh] overflow-y-auto scrollbar-thin scrollbar-track-gray-200 scrollbar-thumb-blue-500">
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
               label="Blog Title"
@@ -316,6 +316,16 @@ export function ManageBlog() {
                 theme="snow"
                 placeholder="Write your blog content here..."
                 className="rounded-md bg-white"
+                style={{ height: "200px", marginBottom: "60px" }}
+                modules={{
+                  toolbar: [
+                    [{ 'header': [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    ['link', 'image'],
+                    ['clean']
+                  ]
+                }}
               />
             </div>
 
