@@ -48,8 +48,8 @@ const PriceCalendar = ({
         </div>
       </div>
       
-  <h6 className="text-xl md:text-4xl font-extrabold text-gray-900 customfontstitle">
-    Packages for different months that don't have dates for booking — please contact directly.
+  <h6 className="text-base md:text-xl font-medium text-gray-800 customfontstitle text-center mx-auto max-w-3xl leading-relaxed bg-blue-50 p-4 rounded-lg shadow-sm border border-blue-100">
+    Looking for different dates or months? Give us a call or drop us an email — we'll customize the perfect package just for you!
   </h6>
       <div className="grid gap-8 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 customfontstitle">
         {filteredPrices.map((trip, idx) => (
