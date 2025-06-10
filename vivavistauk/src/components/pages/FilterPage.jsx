@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useContext } from "react";
+import React, { useEffect, useState, useRef, useContext, useCallback } from "react";
 import axios from "axios";
 import { useNavigate, useParams } from "react-router-dom";
 import { ImageGallery2, FilterElement, FilterPageSlides } from "../elements";
@@ -37,6 +37,7 @@ const FilterPage = () => {
   const [leftHeight, setLeftHeight] = useState("auto");
   const { setLeadPrice } = useContext(LeadContext);
   const [lowDepositOpen, setLowDepositOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
 
   const renderStars = () => {
     const stars = [];
@@ -234,6 +235,11 @@ const FilterPage = () => {
     return acc;
   }, {});
 
+  // Function to switch to the Price Calendar tab
+  const switchToPriceCalendarTab = useCallback(() => {
+    setActiveTab("price-calendar");
+  }, []);
+
   if (loading)
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -423,9 +429,32 @@ const FilterPage = () => {
           )}
         </div>
       </div>
-      <div className="relative z-0 grid md:grid-cols-[2fr_1fr] grid-cols-1 gap-4 p-4 lg:p-4 mt-8 w-full max-w-7xl mx-auto">
+      <div className="relative z-0 grid md:grid-cols-[2fr_1fr] grid-cols-1 gap-4 p-4 lg:p-6 mt-8 w-full max-w-7xl mx-auto items-start">
+        {/* Mobile Price Card (Only visible on mobile) */}
+        <div className="md:hidden w-full mb-6">
+          <FilterElement
+            dealId={id}
+            sharedData={sharedData}
+            updateSharedData={updateSharedData}
+            dealtitle={tripData.title || " "}
+            setSelectedTrip={setSelectedTrip}
+            departureDates={prices.map((p) =>
+              new Date(p.startdate).toLocaleDateString("en-GB")
+            )}
+            departureAirports={prices.map((p) => p.airport)}
+            selectedDate={selectedDate}
+            selectedAirport={selectedAirport}
+            onBookingSubmit={handleBookingSubmit}
+            onDateChange={setSelectedDate}
+            onAirportChange={setSelectedAirport}
+            priceMap={priceMap}
+            prices={prices}
+            switchToPriceCalendarTab={switchToPriceCalendarTab}
+          />
+        </div>
+        
         {/* Left Side: Slides + Similar Deals */}
-        <div className="flex flex-col gap-6 w-full max-w-4xl">
+        <div className="flex flex-col gap-6 w-full max-w-4xl md:pr-4">
           <div className="rounded-xl shadow-md relative z-20">
             <FilterPageSlides
               tripData={tripData}
@@ -447,6 +476,8 @@ const FilterPage = () => {
               pricesid={prices.map((p) => p._id)}
               departureAirports={prices.map((p) => p.airport)}
               priceMap={priceMap}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
             />
           </div>
           <div className="rounded-xl relative overflow-x-hidden shadow-md bg-gray-200 z-10">
@@ -457,8 +488,8 @@ const FilterPage = () => {
           </div>
         </div>
 
-        {/* Right Side: Filter Element */}
-        <div className="w-full h-fit relative z-0 customfontstitle">
+        {/* Right Side: Filter Element (Only visible on desktop) */}
+        <div className="w-full h-fit relative z-0 customfontstitle hidden md:block md:pl-4 md:self-start">
           <FilterElement
             dealId={id}
             sharedData={sharedData}
@@ -476,6 +507,7 @@ const FilterPage = () => {
             onAirportChange={setSelectedAirport}
             priceMap={priceMap}
             prices={prices}
+            switchToPriceCalendarTab={switchToPriceCalendarTab}
           />
         </div>
       </div>

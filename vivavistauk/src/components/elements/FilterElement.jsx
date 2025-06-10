@@ -20,6 +20,28 @@ import {
 import CalendarView from "./CalendarView";
 import ConciergeFormCard from "./ConciergeFormCard";
 import { LeadContext } from "../../contexts/LeadContext";
+
+// Custom hook for media query
+const useCustomMediaQuery = (query) => {
+  const [matches, setMatches] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    if (media.matches !== matches) {
+      setMatches(media.matches);
+    }
+    
+    const listener = () => {
+      setMatches(media.matches);
+    };
+    
+    media.addEventListener("change", listener);
+    return () => media.removeEventListener("change", listener);
+  }, [matches, query]);
+
+  return matches;
+};
+
 const FilterElement = ({
   dealId,
   dealtitle,
@@ -35,6 +57,7 @@ const FilterElement = ({
   onAirportChange, // setter from parent
   priceMap,
   setLedprice,
+  switchToPriceCalendarTab, // Add new prop for tab switching
 }) => {
   // const [adultCount, setAdultCount] = useState(initialAdultCount);
   // const [selectedDate, setSelectedDate] = useState(
@@ -197,43 +220,80 @@ useEffect(() => {
     });
   };
   
-  // Enhanced airport change handler with simplified approach
-  const handleAirportChange = (value) => {
-    // Update the selected airport
-    onAirportChange(value);
+  // Create a function to directly click the Price Calendar tab
+  const clickPriceCalendarTab = () => {
+    console.log("Attempting to click Price Calendar tab");
     
-    // Find price for this airport
-    if (selectedDate && prices && prices.length > 0) {
-      // Find prices for this specific airport and date
-      const airportPrices = prices.filter(price => {
-        // Match date
-        const priceDate = new Date(price.startdate).toLocaleDateString("en-GB");
-        if (priceDate !== selectedDate) return false;
-        
-        // Match airport
-        let hasSelectedAirport = false;
-        if (Array.isArray(price.airport)) {
-          hasSelectedAirport = price.airport.some(airport => 
-            (typeof airport === 'object' && airport._id === value) || airport === value
-          );
-        } else if (typeof price.airport === 'object' && price.airport) {
-          hasSelectedAirport = price.airport._id === value;
-        } else {
-          hasSelectedAirport = price.airport === value;
-        }
-        
-        return hasSelectedAirport && !price.priceswitch;
-      });
-      
-      if (airportPrices.length > 0) {
-        // Find the cheapest price for this airport
-        const cheapestPrice = airportPrices.reduce((min, price) => 
-          price.price < min.price ? price : min, airportPrices[0]).price;
-        
-        // Update price
-        updatePrice(cheapestPrice);
+    // Try the direct ID approach first (most reliable)
+    const priceCalendarTabById = document.getElementById('tab-price-calendar');
+    if (priceCalendarTabById) {
+      console.log("Found Price Calendar tab by ID, clicking it");
+      priceCalendarTabById.click();
+      return; // Exit early if we found it
+    }
+    
+    // Find the Price Calendar tab button using its text content
+    const tabButtons = document.querySelectorAll('[role="tab"]');
+    console.log(`Found ${tabButtons.length} tab buttons`);
+    
+    for (let i = 0; i < tabButtons.length; i++) {
+      console.log(`Tab ${i} text: "${tabButtons[i].textContent.trim()}"`);
+      if (tabButtons[i].textContent.trim() === "Price Calendar") {
+        console.log("Found Price Calendar tab, clicking it");
+        tabButtons[i].click();
+        return; // Exit early if we found it
       }
     }
+    
+    // Alternative approach - try finding the tab by its URL hash or value
+    const priceCalendarTabs = document.querySelectorAll('[value="price-calendar"]');
+    if (priceCalendarTabs.length > 0) {
+      console.log("Found Price Calendar tab by value attribute, clicking it");
+      priceCalendarTabs[0].click();
+      return; // Exit early if we found it
+    }
+    
+    // Create and dispatch a custom event for the FilterPageSlides component to listen to
+    const switchTabEvent = new CustomEvent('switchToPriceCalendar', {
+      bubbles: true, // This allows the event to bubble up through the DOM
+      detail: { tabName: 'price-calendar' }
+    });
+    document.dispatchEvent(switchTabEvent);
+    console.log("Dispatched custom event: switchToPriceCalendar");
+  };
+  
+  // Modified handleAirportChange to switch to Price Calendar tab
+  const handleAirportChange = (value) => {
+    if (onAirportChange) {
+      onAirportChange(value);
+    }
+    
+    // Find all trips for this airport and update price
+    const trips = prices.filter((p) =>
+      p.airport.some((a) => a._id === value)
+    );
+
+    if (trips.length > 0) {
+      // Find the cheapest price for this airport
+      const cheapestTrip = trips.reduce((prev, current) =>
+        prev.price < current.price ? prev : current
+      );
+
+      setSelectedTrip(cheapestTrip);
+      updatePrice(cheapestTrip.price);
+      
+      // Set date associated with this price
+      if (onDateChange) {
+        onDateChange(
+          new Date(cheapestTrip.startdate).toLocaleDateString("en-GB")
+        );
+      }
+    }
+    
+    // Directly click the Price Calendar tab after a short delay to ensure DOM is ready
+    setTimeout(() => {
+      clickPriceCalendarTab();
+    }, 50);
   };
   
   // Update price when selection changes
@@ -325,65 +385,65 @@ useEffect(() => {
     }
   }, [selectedAirport, selectedDate, prices]);
 
+  // Enhanced click handlers for price card interactions
+  const handlePriceCardInteraction = () => {
+    // Directly click the Price Calendar tab
+    clickPriceCalendarTab();
+  };
+
+  // Check if on mobile using our custom hook
+  const isMobileView = useCustomMediaQuery("(max-width: 768px)");
+
+  // Create state to track window height
+  const [windowHeight, setWindowHeight] = useState(typeof window !== 'undefined' ? window.innerHeight : 800);
+
+  // Update window height when it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const handleResize = () => {
+        setWindowHeight(window.innerHeight);
+      };
+      
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, []);
+
   return (
-    <Card className="w-full max-w-md border border-gray-100 shadow-lg p-1 group filter-element-card">
-      {/* Header: Price */}
+    <Card
+      className={`w-full shadow-lg transition-all duration-300 hover:shadow-xl ${
+        !isMobileView ? "sticky top-20" : ""
+      } mt-0`}
+      style={{ maxHeight: isMobileView ? "none" : "calc(100vh - 100px)" }}
+    >
       <CardHeader
-        floated={false}
-        className="flex flex-col items-center p-4 bg-gradient-to-r from-blue-500 to-indigo-600"
+        color="white"
+        className={`flex flex-col items-center p-4 bg-gradient-to-r from-blue-500 to-indigo-600 cursor-pointer ${
+          isMobileView ? "py-3" : "py-6"
+        }`}
+        onClick={(e) => {
+          e.stopPropagation();
+          handlePriceCardInteraction();
+        }}
       >
-        <Typography variant="small" className="text-white customfontstitle">
+        <Typography variant="small" className="text-white customfontstitle mb-1">
           Price from
         </Typography>
         <Typography
-          variant="h3"
+          variant={isMobileView ? "h4" : "h3"}
           className="font-bold leading-tight text-white customfontstitle price-display"
         >
           £{leadPrice}
         </Typography>
-        <Typography variant="small" className="text-white customfontstitle">
+        <Typography variant="small" className="text-white customfontstitle mt-1">
           per person
         </Typography>
       </CardHeader>
 
       {/* Body: Selectors & Price */}
-      <CardBody className="p-4 space-y-4">
-        {/* Departure Date */}
-        {/* <div>
-          <Typography
-            variant="small"
-            className="font-medium text-gray-700 mb-2"
-          >
-            Departure Date
-          </Typography>
-          {/* <Select
-            label="Select Date"
-            size="md"
-            value={selectedDate}
-            onChange={(value) => setSelectedDate(value)}
-          >
-            {departureDates.map((date, idx) => (
-              <Option key={idx} value={date}>
-                {date}
-              </Option>
-            ))}
-          </Select> */}
-        {/* <Select
-            label="Select Date"
-            size="md"
-            value={selectedDate}
-            onChange={(value) => onDateChange(value)}
-          >
-            {departureDates.map((date, idx) => (
-              <Option key={idx} value={date}>
-                {date}
-              </Option>
-            ))}
-          </Select>
-        </div> */}
-
+      <CardBody className={`p-4 space-y-6 ${isMobileView ? "py-3" : "px-5 py-5"}`}>
         {/* Departure Airport */}
-        <div>
+        <div onClick={handlePriceCardInteraction} className={isMobileView ? "" : "mb-2"}>
           <Typography
             variant="small"
             className="font-medium text-gray-700 mb-2 customfontstitle"
@@ -392,10 +452,16 @@ useEffect(() => {
           </Typography>
           <Select
             label="Select Airport"
-            size="md"
+            size={isMobileView ? "sm" : "md"}
             value={selectedAirport}
             className="customfontstitle"
             onChange={handleAirportChange}
+            onClick={(e) => {
+              // Stop propagation to prevent double execution
+              e.stopPropagation();
+              // Then explicitly navigate to Price Calendar tab
+              clickPriceCalendarTab();
+            }}
           >
             {uniqueDepartureAirports.map((airport, idx) => (
               <Option key={airport._id} value={airport._id}>
@@ -406,17 +472,26 @@ useEffect(() => {
         </div>
 
         {/* Number of Travelers (Plus/Minus) */}
-        <div>
+        <div 
+          onClick={(e) => {
+            e.stopPropagation();
+            handlePriceCardInteraction();
+          }}
+          className={isMobileView ? "" : "mb-2"}
+        >
           <Typography
             variant="small"
-            className="font-medium text-gray-700 mb-1 customfontstitle"
+            className="font-medium text-gray-700 mb-2 customfontstitle"
           >
             Number of Travelers
           </Typography>
           <div className="flex items-center w-full border border-gray-300 rounded-md p-2">
             <button
               type="button"
-              onClick={handleDecrement}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDecrement();
+              }}
               className="px-3 py-1 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
             >
               -
@@ -426,7 +501,10 @@ useEffect(() => {
             </span>
             <button
               type="button"
-              onClick={handleIncrement}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleIncrement();
+              }}
               className="px-3 py-1 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
             >
               +
@@ -435,7 +513,13 @@ useEffect(() => {
         </div>
 
         {/* Total Price */}
-        <div className="flex items-center justify-between pt-2">
+        <div 
+          className="flex items-center justify-between pt-2 cursor-pointer" 
+          onClick={(e) => {
+            e.stopPropagation();
+            handlePriceCardInteraction();
+          }}
+        >
           <Typography
             variant="small"
             className="font-medium text-gray-700 customfontstitle"
@@ -443,7 +527,7 @@ useEffect(() => {
             Total Price:
           </Typography>
           <Typography
-            variant="h5"
+            variant={isMobileView ? "h6" : "h5"}
             className="font-bold tracking-wide bg-transparent bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-indigo-600 customfontstitle"
           >
             £{totalPrice}
@@ -452,10 +536,10 @@ useEffect(() => {
       </CardBody>
 
       {/* Footer: Button & Contact Info */}
-      <CardFooter className="p-4 pt-2 space-y-4">
+      <CardFooter className={`p-4 pt-2 space-y-4 ${isMobileView ? "py-3" : "px-5 py-5"}`}>
         <Button
-          size="lg"
-          className="transition-colors duration-500 ease-in-out bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-indigo-600 hover:to-blue-700 w-full normal-case text-white font-semibold customfontstitle"
+          size={isMobileView ? "md" : "lg"}
+          className="transition-colors duration-500 ease-in-out bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-indigo-600 hover:to-blue-700 w-full normal-case text-white font-semibold customfontstitle py-3"
           onClick={handleSubmit}
         >
           Book Now
@@ -489,45 +573,49 @@ useEffect(() => {
           selectedAirport={selectedAirport}
         /> */}
 
-        {/* Phone / Call to Book */}
-        <div className="text-center">
-          <Typography
-            variant="small"
-            className="text-gray-600 mb-1 customfontstitle"
-          >
-            Or call us to book:
-          </Typography>
-          <div>
-            <a
-              href="tel:+02045059777"
-              className="flex items-center justify-center gap-2"
+        {/* Phone / Call to Book - Only show on desktop or if mobile with more space */}
+        {(!isMobileView || windowHeight > 700) && (
+          <div className="text-center">
+            <Typography
+              variant="small"
+              className="text-gray-600 mb-1 customfontstitle"
             >
-              <FaPhoneAlt className="text-green-500" />
-              <Typography
-                variant="large"
-                className="font-bold text-black customfontstitle"
+              Or call us to book:
+            </Typography>
+            <div>
+              <a
+                href="tel:+02045059777"
+                className="flex items-center justify-center gap-2"
               >
-                0204 505 9777
-              </Typography>
-            </a>
+                <FaPhoneAlt className="text-green-500" />
+                <Typography
+                  variant="large"
+                  className="font-bold text-black customfontstitle"
+                >
+                  0204 505 9777
+                </Typography>
+              </a>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Icons Row: Secure Booking, Flexible Payment, 24/7 Support */}
-        <div className="flex items-center justify-around text-xs text-gray-600 mt-2">
-          <div className="flex flex-col items-center">
-            <FaLock className="text-gray-800 text-lg mb-1" />
-            <span>Secure Booking</span>
+        {/* Icons Row: Only show on desktop or if mobile with more space */}
+        {(!isMobileView || windowHeight > 700) && (
+          <div className="flex items-center justify-around text-xs text-gray-600 mt-2">
+            <div className="flex flex-col items-center">
+              <FaLock className="text-gray-800 text-lg mb-1" />
+              <span>Secure Booking</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <FaMoneyBillWave className="text-gray-800 text-lg mb-1" />
+              <span>Flexible Payment</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <FaHeadphonesAlt className="text-gray-800 text-lg mb-1" />
+              <span>24/7 Support</span>
+            </div>
           </div>
-          <div className="flex flex-col items-center">
-            <FaMoneyBillWave className="text-gray-800 text-lg mb-1" />
-            <span>Flexible Payment</span>
-          </div>
-          <div className="flex flex-col items-center">
-            <FaHeadphonesAlt className="text-gray-800 text-lg mb-1" />
-            <span>24/7 Support</span>
-          </div>
-        </div>
+        )}
       </CardFooter>
       <Dialog
         open={openDialog}

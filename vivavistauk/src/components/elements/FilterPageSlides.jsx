@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import {
   Tabs,
   TabsHeader,
@@ -81,9 +81,31 @@ const FilterPageSlides = ({
   departureDates,
   departureAirports,
   priceMap,
+  activeTab,
+  setActiveTab,
 }) => {
-  const [activeTab, setActiveTab] = useState("overview");
+  // Remove local activeTab state since it's now controlled by the parent
+  // const [activeTab, setActiveTab] = useState("overview");
   const [openDays, setOpenDays] = useState(() => itinerary?.map(() => false) || []);
+
+  // Listen for the custom event to switch tabs
+  useEffect(() => {
+    const handleSwitchTab = (event) => {
+      console.log("Received custom event:", event.detail);
+      if (event.detail && event.detail.tabName) {
+        console.log("Switching to tab:", event.detail.tabName);
+        setActiveTab(event.detail.tabName);
+      }
+    };
+
+    // Add event listener
+    document.addEventListener('switchToPriceCalendar', handleSwitchTab);
+
+    // Clean up
+    return () => {
+      document.removeEventListener('switchToPriceCalendar', handleSwitchTab);
+    };
+  }, [setActiveTab]);
 
   const handleTripSelect = useCallback((trip) => {
     setSelectedTrip(trip);
@@ -173,6 +195,7 @@ const FilterPageSlides = ({
               <Tab
                 key={value}
                 value={value}
+                id={`tab-${value}`}
                 onClick={() => setActiveTab(value)}
                 className={
                   activeTab === value
