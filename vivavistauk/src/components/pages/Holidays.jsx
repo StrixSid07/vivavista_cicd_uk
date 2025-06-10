@@ -99,14 +99,24 @@ const Holidays = () => {
     fetchDeals();
   }, [slug, slugToName]);
 
-  const handlePrevImage = (dealId, images) => {
+  const handlePrevImage = (e, dealId, images) => {
+    // Stop event propagation to prevent bubbling to parent elements
+    e.stopPropagation();
+    e.preventDefault();
+    
+    // Update image index immediately
     setImageIndex((prev) => ({
       ...prev,
       [dealId]: prev[dealId] === 0 ? images.length - 1 : prev[dealId] - 1,
     }));
   };
 
-  const handleNextImage = (dealId, images) => {
+  const handleNextImage = (e, dealId, images) => {
+    // Stop event propagation to prevent bubbling to parent elements
+    e.stopPropagation();
+    e.preventDefault();
+    
+    // Update image index immediately
     setImageIndex((prev) => ({
       ...prev,
       [dealId]: prev[dealId] === images.length - 1 ? 0 : prev[dealId] + 1,
@@ -121,6 +131,10 @@ const Holidays = () => {
     currentPage * itemsPerPage
   );
 
+  // Get the current holiday type name
+  const holidayTypeName = slugToName[slug] || "Holidays";
+  const holidayTypeTitle = `${holidayTypeName} Holidays`;
+
   return (
     <div>
       {" "}
@@ -134,7 +148,7 @@ const Holidays = () => {
       >
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-gray-600/40"></div>
         <div className="hero-content text-center relative z-10">
-          <h1 className="text-5xl font-bold text-white">Holidays</h1>
+          <h1 className="text-5xl font-bold text-white">{holidayTypeTitle}</h1>
         </div>
       </section>
       <div className="min-h-screen p-6 bg-gradient-to-t from-blue-900 via-blue-700 to-green-500 animate-gradient-x">
@@ -173,8 +187,25 @@ const Holidays = () => {
                         <img
                           src={deal.images[imageIndex[deal._id]]}
                           alt={deal.title}
-                          className="w-full h-full object-cover transition-transform duration-500 ease-in group-hover:scale-105"
+                          className="w-full h-full object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
+                          loading="eager"
+                          onLoad={(e) => e.target.classList.add('loaded')}
                         />
+                        {/* Preload next and previous images */}
+                        {deal.images.length > 1 && (
+                          <div className="hidden">
+                            <img 
+                              src={deal.images[(imageIndex[deal._id] + 1) % deal.images.length]} 
+                              alt="preload next" 
+                              loading="eager"
+                            />
+                            <img 
+                              src={deal.images[imageIndex[deal._id] === 0 ? deal.images.length - 1 : imageIndex[deal._id] - 1]} 
+                              alt="preload prev"
+                              loading="eager" 
+                            />
+                          </div>
+                        )}
                         {/* Badge */}
                         {deal.tag && (
                           <div className="absolute top-3 left-3 bg-white text-deep-orange-500 text-xs font-semibold px-3 py-1 rounded-full shadow-sm flex items-center gap-1">
@@ -184,18 +215,18 @@ const Holidays = () => {
                         {deal.images.length > 1 && (
                           <>
                             <button
-                              onClick={() =>
-                                handlePrevImage(deal._id, deal.images)
+                              onClick={(e) =>
+                                handlePrevImage(e, deal._id, deal.images)
                               }
-                              className="absolute left-0 bottom-0 -mb-5 -ml-1 transform -translate-y-1/2 bg-black text-white p-2 rounded-lg hover:bg-opacity-75"
+                              className="absolute left-0 bottom-0 -mb-5 -ml-1 transform -translate-y-1/2 bg-black text-white p-2 rounded-lg hover:bg-opacity-75 z-10"
                             >
                               <IoIosArrowBack />
                             </button>
                             <button
-                              onClick={() =>
-                                handleNextImage(deal._id, deal.images)
+                              onClick={(e) =>
+                                handleNextImage(e, deal._id, deal.images)
                               }
-                              className="absolute right-0 bottom-0 -mb-5 -mr-1 transform -translate-y-1/2 bg-black text-white p-2 rounded-lg hover:bg-opacity-75"
+                              className="absolute right-0 bottom-0 -mb-5 -mr-1 transform -translate-y-1/2 bg-black text-white p-2 rounded-lg hover:bg-opacity-75 z-10"
                             >
                               <IoIosArrowForward />
                             </button>
