@@ -679,17 +679,43 @@ const deleteDealImage = async (req, res) => {
   const { dealId } = req.params;
   const { imageUrl } = req.body;
   try {
-    console.log(imageUrl);
-    await deleteFromS3(imageUrl);
+    console.log("Deleting deal image:", imageUrl);
+    
+    // Delete the image file from storage
+    if (IMAGE_STORAGE === "s3") {
+      // Only call deleteFromS3 for S3 storage
+      await deleteFromS3(imageUrl);
+    } else {
+      // For local storage, try to delete the file from the filesystem
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        
+        // Extract the file path from the URL
+        const filePath = path.join(process.cwd(), imageUrl);
+        
+        // Check if the file exists before attempting to delete
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+          console.log("Local image file deleted successfully");
+        } else {
+          console.log("Local image file not found:", filePath);
+        }
+      } catch (fileError) {
+        console.log("Error deleting local file:", fileError);
+        // Continue even if file deletion fails
+      }
+    }
 
     // Remove image URL from MongoDB
     await Deal.findByIdAndUpdate(dealId, {
       $pull: { images: imageUrl },
     });
-    console.log("Image deleted successfully !  !");
+    
+    console.log("Image deleted successfully from database");
     res.status(200).json({ message: "Image deleted successfully" });
   } catch (error) {
-    console.log(error);
+    console.log("Error in deleteDealImage:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };

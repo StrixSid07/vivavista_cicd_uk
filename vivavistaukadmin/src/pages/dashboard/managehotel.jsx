@@ -48,6 +48,8 @@ export function ManageHotel() {
   const [mode, setMode] = useState("manual");
   const [inputValue, setInputValue] = useState(formData.locationId || "");
   const [imageError, setImageError] = useState("");
+  const [newImages, setNewImages] = useState([]);
+  const fileInputRef = React.useRef(null);
 
   // Helper function for validating image
   const validateImage = (file) => {
@@ -125,7 +127,7 @@ export function ManageHotel() {
   const handleRemoveImage = async (indexToRemove, imageUrl) => {
     try {
       const HotelId = formData._id; // adjust this as per your data
-      console.log("this is deal data", formData);
+      console.log("Removing image from hotel ID:", HotelId);
       await axios.delete(`/hotels/image/${HotelId}`, {
         data: { imageUrl },
       });
@@ -137,6 +139,10 @@ export function ManageHotel() {
       }));
     } catch (error) {
       console.error("Error deleting image:", error);
+      setAlert({ 
+        message: error.response?.data?.message || "Error deleting image", 
+        type: "red" 
+      });
     }
   };
   useEffect(() => {
@@ -186,6 +192,7 @@ export function ManageHotel() {
     setOpenDialog(false);
     setCurrentHotel(null);
     setAlert({ message: "", type: "" });
+    setNewImages([]); // Reset newImages when closing dialog
   };
 
   const handleViewHotel = (hotel) => {
@@ -197,7 +204,7 @@ export function ManageHotel() {
     setOpenViewDialog(false);
     setCurrentHotel(null);
   };
-  const [newImages, setNewImages] = useState([]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -233,10 +240,11 @@ export function ManageHotel() {
         setAlert({ message: "Hotel added successfully!", type: "green" });
       }
       fetchHotels();
+      setNewImages([]); // Reset newImages after successful submission
       handleCloseDialog();
     } catch (error) {
       console.error("Error saving hotel:", error);
-      setAlert({ message: "Error saving hotel", type: "red" });
+      setAlert({ message: error.response?.data?.message || "Error saving hotel", type: "red" });
     } finally {
       setLoading(false);
     }
@@ -533,22 +541,23 @@ export function ManageHotel() {
             {/* Image Upload */}
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
-                Upload Images (JPG, JPEG, PNG only, max 5MB each, {currentHotel ? 'up to 10 images total' : 'up to 5 images'})
+                Upload Images (JPG, JPEG, PNG only, max 5MB each, up to 10 images total)
               </label>
               <Input
                 type="file"
                 multiple
+                ref={fileInputRef}
                 accept="image/jpeg,image/jpg,image/png"
                 onChange={(e) => {
                   const files = Array.from(e.target.files);
                   
-                  // Check total number of images - different limits for new vs existing hotels
-                  const maxImages = currentHotel ? 10 : 5;
+                  // Allow 10 images for both new and existing hotels
+                  const maxImages = 10;
                   if (
                     files.length + newImages.length + formData.images.length >
                     maxImages
                   ) {
-                    setImageError(`You can only upload up to ${maxImages} images ${currentHotel ? 'total' : ''}.`);
+                    setImageError(`You can only upload up to ${maxImages} images total.`);
                     e.target.value = ""; // reset the input
                     return;
                   }
@@ -576,10 +585,20 @@ export function ManageHotel() {
                     onClick={() => {
                       setImageError("");
                       setNewImages([]); // Clear only the new images
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = ""; // Clear the file input
+                      }
                     }}
                   >
                     Clear Images
                   </Button>
+                </div>
+              )}
+              {newImages.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-sm text-green-600">
+                    {newImages.length} new image(s) selected for upload
+                  </p>
                 </div>
               )}
             </div>

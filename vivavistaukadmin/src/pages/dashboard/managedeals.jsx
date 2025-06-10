@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   Typography,
   Button,
@@ -130,6 +130,8 @@ export const ManageDeals = () => {
     currentPage: 1,
     itemsPerPage: 5
   });
+
+  const fileInputRef = useRef(null);
 
   // Add this function to toggle the expanded state of a price
   const togglePriceExpand = (index) => {
@@ -395,7 +397,10 @@ export const ManageDeals = () => {
     setCurrentDeal(null);
     setAlert({ message: "", type: "" });
     setIsSubmitting(false);
-    setNewImages([]);
+    setNewImages([]); // Reset newImages when closing dialog
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""; // Clear the file input
+    }
   };
 
   const handleOpenViewDialog = (deal) => {
@@ -456,6 +461,10 @@ export const ManageDeals = () => {
         setAlert({ message: "Deal added successfully!", type: "green" });
       }
       fetchDeals();
+      setNewImages([]); // Reset newImages after successful submission
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""; // Clear the file input
+      }
       handleCloseDialog();
     } catch (error) {
       console.error("Error saving deal:", error);
@@ -470,8 +479,8 @@ export const ManageDeals = () => {
 
   const handleRemoveImage = async (indexToRemove, imageUrl) => {
     try {
-      const dealId = formData._id; // adjust this as per your data
-      console.log("this is deal data", formData);
+      const dealId = formData._id;
+      console.log("Removing image from deal ID:", dealId);
       await axios.delete(`/deals/image/${dealId}`, {
         data: { imageUrl },
       });
@@ -484,6 +493,10 @@ export const ManageDeals = () => {
       fetchDeals();
     } catch (error) {
       console.error("Error deleting image:", error);
+      setAlert({ 
+        message: error.response?.data?.message || "Error deleting image", 
+        type: "red" 
+      });
     }
   };
 
@@ -2014,23 +2027,24 @@ export const ManageDeals = () => {
             {/* Image Upload */}
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
-                Upload Images (JPG, JPEG, PNG only, max 5MB each, {currentDeal ? 'up to 10 images total' : 'up to 5 images'})
+                Upload Images (JPG, JPEG, PNG only, max 5MB each, up to 10 images total)
               </label>
               <Input
                 type="file"
                 multiple
+                ref={fileInputRef}
                 accept="image/jpeg,image/jpg,image/png"
                 label="Choose Image"
                 onChange={(e) => {
                   const files = Array.from(e.target.files);
 
-                  // Check total number of images - different limits for new vs existing deals
-                  const maxImages = currentDeal ? 10 : 5;
+                  // Allow 10 images for both new and existing deals
+                  const maxImages = 10;
                   if (
                     files.length + newImages.length + formData.images.length >
                     maxImages
                   ) {
-                    setImageError(`You can only upload up to ${maxImages} images ${currentDeal ? 'total' : ''}.`);
+                    setImageError(`You can only upload up to ${maxImages} images total.`);
                     e.target.value = ""; // reset the input
                     return;
                   }
@@ -2058,10 +2072,20 @@ export const ManageDeals = () => {
                     onClick={() => {
                       setImageError("");
                       setNewImages([]); // Clear only the new images
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = ""; // Clear the file input
+                      }
                     }}
                   >
                     Clear Images
                   </Button>
+                </div>
+              )}
+              {newImages.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-sm text-green-600">
+                    {newImages.length} new image(s) selected for upload
+                  </p>
                 </div>
               )}
             </div>
