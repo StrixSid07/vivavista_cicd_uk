@@ -98,4 +98,44 @@ const DealSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Add a pre-save hook to check for duplicate dates in prices array
+DealSchema.pre('save', function(next) {
+  // Check if prices array exists and has items
+  if (!this.prices || this.prices.length === 0) {
+    return next();
+  }
+  
+  // Create a map to track dates
+  const dateSeen = new Map();
+  const duplicateDates = [];
+  
+  // Check for duplicate dates
+  for (let i = 0; i < this.prices.length; i++) {
+    const price = this.prices[i];
+    if (!price.startdate) continue;
+    
+    // Convert to date string for comparison (YYYY-MM-DD)
+    const dateStr = new Date(price.startdate).toISOString().split('T')[0];
+    
+    if (dateSeen.has(dateStr)) {
+      // Found a duplicate date
+      duplicateDates.push({
+        dateStr,
+        index: i,
+        previousIndex: dateSeen.get(dateStr)
+      });
+    } else {
+      // Mark this date as seen
+      dateSeen.set(dateStr, i);
+    }
+  }
+  
+  // If duplicates were found, reject the save
+  if (duplicateDates.length > 0) {
+    return next(new Error(`Duplicate dates found in prices: ${duplicateDates.map(d => d.dateStr).join(', ')}. Each price must have a unique start date.`));
+  }
+  
+  next();
+});
+
 module.exports = mongoose.model("Deal", DealSchema);

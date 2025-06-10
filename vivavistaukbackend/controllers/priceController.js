@@ -114,6 +114,31 @@ const createDealPrice = async (req, res) => {
       }
     }
 
+    // Format the start date for duplicate checking (YYYY-MM-DD)
+    const jsStartDate = new Date(startdate);
+    const startDateStr = jsStartDate.toISOString().split('T')[0];
+
+    // Check if a price with the same start date already exists for this deal
+    const deal = await Deal.findById(dealId);
+    if (!deal) {
+      return res.status(404).json({ message: "Deal not found" });
+    }
+
+    const existingPriceWithSameDate = deal.prices.find(p => 
+      p.startdate.toISOString().split('T')[0] === startDateStr
+    );
+
+    if (existingPriceWithSameDate) {
+      return res.status(400).json({ 
+        message: `A price for date ${startDateStr} already exists for this deal. Please use a different date or update the existing price entry.`,
+        existingPrice: {
+          id: existingPriceWithSameDate._id,
+          startdate: existingPriceWithSameDate.startdate,
+          price: existingPriceWithSameDate.price
+        }
+      });
+    }
+
     // Create new price object
     const newPrice = {
       country,
@@ -140,27 +165,34 @@ const createDealPrice = async (req, res) => {
     };
 
     // Add price to deal
-    const deal = await Deal.findByIdAndUpdate(
-      dealId,
-      { $push: { prices: newPrice } },
-      { new: true }
-    ).populate('prices.hotel', 'name')
-     .populate('prices.airport', 'name code');
+    deal.prices.push(newPrice);
 
-    if (!deal) {
-      return res.status(404).json({ message: "Deal not found" });
+    try {
+      // Save the deal with the new price
+      const updatedDeal = await deal.save();
+      
+      // Return newly created price
+      const addedPrice = updatedDeal.prices[updatedDeal.prices.length - 1];
+
+      return res.status(201).json({
+        message: "Price added successfully",
+        price: addedPrice
+      });
+    } catch (error) {
+      // Check if the error is from our schema validation
+      if (error.message && error.message.includes('Duplicate dates found')) {
+        return res.status(400).json({ 
+          message: `Duplicate date detected. Each price must have a unique start date.`,
+          error: error.message
+        });
+      }
+      
+      // Handle other save errors
+      throw error;
     }
-
-    // Return the newly created price (last one in the array)
-    const createdPrice = deal.prices[deal.prices.length - 1];
-
-    res.status(201).json({
-      message: "Price created successfully",
-      price: createdPrice
-    });
-  } catch (error) {
-    console.error("Error creating deal price:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+  } catch (err) {
+    console.error('Error creating price:', err);
+    return res.status(500).json({ message: "Server error creating price", error: err.message });
   }
 };
 

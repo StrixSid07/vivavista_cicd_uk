@@ -117,9 +117,29 @@ export function ManageDealExternal() {
         },
       );
 
-      // For price-only upload, show detailed results
-      if (endpoint === "upload-price-only" && res.data) {
-        setUploadResults(res.data);
+      // For price-only upload or bulk-upload-price, show detailed results
+      if ((endpoint === "upload-price-only" || endpoint === "bulk-upload-price") && res.data) {
+        // Prepare results for the dialog
+        const results = {
+          success: res.data.success,
+          message: res.data.message,
+          addedCount: res.data.updatedDeals || 0,
+          updatedCount: 0,
+          errorCount: res.data.skippedDuplicates || 0,
+          errors: []
+        };
+        
+        // Process skipped duplicates as errors for display
+        if (res.data.results && Array.isArray(res.data.results)) {
+          results.errors = res.data.results
+            .filter(item => item.status === "skipped")
+            .map(item => ({
+              row: JSON.stringify(item.row),
+              error: item.message
+            }));
+        }
+        
+        setUploadResults(results);
         setOpenResultDialog(true);
       } else {
         setMessage({

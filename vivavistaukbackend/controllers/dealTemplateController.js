@@ -1053,6 +1053,9 @@ exports.readAndInsertExcel = async (req, res) => {
 
     // Transform and insert prices into each Deal
     let updatedDealsCount = 0;
+    let skippedDuplicates = 0;
+    let processingResults = [];
+    
     for (const row of jsonData) {
       const dealId = row["Deal ID"];
       const airportId = row["Airport ID"];
@@ -1066,30 +1069,90 @@ exports.readAndInsertExcel = async (req, res) => {
       if (!dealId || !airportId || !hotelId || !country || !price) continue;
 
       const deal = await Deal.findById(dealId);
-      if (!deal) continue;
+      if (!deal) {
+        processingResults.push({
+          row: row,
+          status: "error",
+          message: "Deal not found"
+        });
+        continue;
+      }
 
-      // Append to prices array
+      // Convert Excel dates to JS dates
+      const jsStartDate = excelDateToJSDate(startdate);
+      const jsEndDate = excelDateToJSDate(enddate);
+      
+      // Format dates to strings for comparison (YYYY-MM-DD)
+      const startDateStr = jsStartDate.toISOString().split('T')[0];
+      
+      // Check if a price with the same start date already exists for this deal
+      const existingPriceWithSameDate = deal.prices.find(p => 
+        p.startdate.toISOString().split('T')[0] === startDateStr
+      );
+
+      if (existingPriceWithSameDate) {
+        // Skip this entry as a duplicate date
+        skippedDuplicates++;
+        processingResults.push({
+          row: row,
+          status: "skipped",
+          message: `Duplicate date: ${startDateStr} already exists in deal '${deal.title}'`
+        });
+        continue;
+      }
+
+      // No duplicate found, append to prices array
       deal.prices.push({
         country,
         airport: [new mongoose.Types.ObjectId(airportId)],
         hotel: new mongoose.Types.ObjectId(hotelId),
-        startdate: excelDateToJSDate(startdate), // set your actual logic here
-        enddate: excelDateToJSDate(enddate), // set your actual logic here
+        startdate: jsStartDate,
+        enddate: jsEndDate,
         price,
       });
 
-       await deal.save();
-      updatedDealsCount++;
+      try {
+        await deal.save();
+        updatedDealsCount++;
+        processingResults.push({
+          row: row,
+          status: "success",
+          message: `Price added for date: ${startDateStr}`
+        });
+      } catch (error) {
+        // Handle schema validation errors
+        if (error.message && error.message.includes('Duplicate dates found')) {
+          skippedDuplicates++;
+          processingResults.push({
+            row: row,
+            status: "error",
+            message: `Failed to add price: ${error.message}`
+          });
+        } else {
+          // Handle other errors
+          processingResults.push({
+            row: row,
+            status: "error",
+            message: `Failed to add price: ${error.message}`
+          });
+        }
+      }
     }
 
     return res.status(200).json({
       success: true,
       message: "Prices inserted into matching deals",
       updatedDeals: updatedDealsCount,
+      skippedDuplicates: skippedDuplicates,
+      results: processingResults
     });
   } catch (err) {
-    console.error("Upload error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    console.error("Error inserting prices:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Error processing Excel file",
+      error: err.message,
+    });
   }
 };
 
