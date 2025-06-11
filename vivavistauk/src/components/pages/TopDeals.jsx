@@ -136,7 +136,8 @@ const TopDeals = () => {
                         <img
                           src={deal.images[imageIndex[deal._id]]}
                           alt={deal.title}
-                          className="w-full h-full object-cover transition-transform duration-500 ease-in group-hover:scale-105"
+                          className="w-full h-full object-cover transition-transform duration-500 ease-in group-hover:scale-105 cursor-pointer"
+                          onClick={() => navigate(`/deals/${deal._id}`)}
                         />
                         {/* Badge */}
                         {deal.tag && (

@@ -58,7 +58,8 @@ const MulticenterCard = ({ deal, index, currentImage, nextImage, prevImage }) =>
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             transition={{ duration: 0.4 }}
-            className="w-full h-full object-cover transition-transform duration-500 ease-in-out group-hover:scale-110"
+            className="w-full h-full object-cover transition-transform duration-500 ease-in-out group-hover:scale-110 cursor-pointer"
+            onClick={() => navigate(`/deals/${deal._id}`)}
           />
         </div>
         

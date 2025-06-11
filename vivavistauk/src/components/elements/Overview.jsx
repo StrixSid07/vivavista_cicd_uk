@@ -84,7 +84,7 @@ const Overview = ({
 
       {/* Trip Summary */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-2 gap-5 text-base sm:text-lg text-gray-700 customfontstitle">
-        <InfoItem
+        {/* <InfoItem
           icon={<Globe2 className="text-blue-500 w-5 h-5" />}
           label="Countries"
           value={
@@ -92,7 +92,7 @@ const Overview = ({
               ? availableCountries.join(", ")
               : "Not specified"
           }
-        />
+        /> */}
         <InfoItem
           icon={<Utensils className="text-green-500 w-5 h-5" />}
           label="Board Basis"

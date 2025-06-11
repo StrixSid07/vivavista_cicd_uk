@@ -85,7 +85,8 @@ const NewAddedCardComponent = ({
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -100 }}
                 transition={{ duration: 0.4 }}
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover cursor-pointer"
+                onClick={handleViewDetails}
               />
             </AnimatePresence>
 

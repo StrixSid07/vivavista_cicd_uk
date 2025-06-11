@@ -178,9 +178,10 @@ const Destinations = () => {
                         <img
                           src={deal.images[imageIndex[deal._id]]}
                           alt={deal.title}
-                          className="w-full h-full object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
+                          className="w-full h-full object-cover transition-transform duration-300 ease-in-out group-hover:scale-105 cursor-pointer"
                           loading="eager"
                           onLoad={(e) => e.target.classList.add('loaded')}
+                          onClick={() => navigate(`/deals/${deal._id}`)}
                         />
                         {/* Preload next and previous images */}
                         {deal.images.length > 1 && (

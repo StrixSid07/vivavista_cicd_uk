@@ -180,6 +180,8 @@ const TravelPackages = ({ destinations }) => {
                         src={deal.images[0]}
                         className="h-52 w-full object-cover transition-transform duration-300 group-hover:scale-105"
                         alt={destination.name}
+                        onClick={() => handleViewDeals(deal._id)}
+                        style={{ cursor: 'pointer' }}
                       />
                       {/* Badge */}
                       {deal.tag && (
