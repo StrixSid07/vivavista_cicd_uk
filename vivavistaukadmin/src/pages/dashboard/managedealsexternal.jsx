@@ -75,6 +75,18 @@ export function ManageDealExternal() {
     }
   };
 
+  // Add this function to clear the file input
+  const handleClearFile = () => {
+    setFile(null);
+    // Reset the file input element by creating a ref
+    const fileInput = document.querySelector('input[type="file"]');
+    if (fileInput) {
+      fileInput.value = '';
+    }
+    setMessage({ type: "info", text: "File selection cleared" });
+    setOpenAlert(true);
+  };
+
   const handleUpload = async (endpoint) => {
     if (!file) {
       setMessage({ type: "error", text: "Please select an Excel file first." });
@@ -149,7 +161,12 @@ export function ManageDealExternal() {
         setOpenAlert(true);
       }
       
+      // Clear the file input after successful upload
       setFile(null);
+      const fileInput = document.querySelector('input[type="file"]');
+      if (fileInput) {
+        fileInput.value = '';
+      }
     } catch (error) {
       console.error("Upload error:", error);
       setMessage({
@@ -199,6 +216,12 @@ export function ManageDealExternal() {
 
   const isUploading = (endpoint) => uploadingType === endpoint;
 
+  // Add function to handle closing the result dialog
+  const handleCloseResultDialog = () => {
+    setOpenResultDialog(false);
+    setUploadResults(null);
+  };
+
   useEffect(() => {
     if (message.text) {
       setOpenAlert(true);
@@ -226,7 +249,13 @@ export function ManageDealExternal() {
           open={openAlert}
           onClose={() => setOpenAlert(false)}
           animate={{ mount: { y: 0 }, unmount: { y: 100 } }}
-          color={message.type === "success" ? "green" : "red"}
+          color={
+            message.type === "success" 
+              ? "green" 
+              : message.type === "info" 
+                ? "blue" 
+                : "red"
+          }
         >
           {message.text}
         </Alert>
@@ -237,6 +266,7 @@ export function ManageDealExternal() {
             Download Templates
           </Typography>
           <div className="grid gap-3 sm:grid-cols-3 md:grid-cols-4">
+            {/* Temporarily commented out
             <Button
               color="blue"
               onClick={() => downloadFile("template", "DealsTemplate.xlsx")}
@@ -260,6 +290,7 @@ export function ManageDealExternal() {
             >
               {downloadInProgress ? <Spinner className="h-4 w-4" /> : "Download Price Template"}
             </Button>
+            */}
             <Button
               color="amber"
               onClick={() =>
@@ -281,15 +312,37 @@ export function ManageDealExternal() {
           <Typography variant="h6" color="blue-gray">
             Upload Excel File
           </Typography>
-          <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-end">
-            <input
-              type="file"
-              accept=".xlsx"
-              onChange={handleFileChange}
-              required
-              className="block w-full max-w-xs text-sm text-gray-900 file:mr-4 file:rounded-md file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-blue-600 hover:file:bg-blue-100"
-              disabled={uploadingType !== null}
-            />
+          <div className="space-y-2">
+            <div className="flex flex-col sm:flex-row items-start gap-4">
+              <input
+                type="file"
+                accept=".xlsx"
+                onChange={handleFileChange}
+                required
+                className="block w-full max-w-xs text-sm text-gray-900 file:mr-4 file:rounded-md file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-blue-600 hover:file:bg-blue-100"
+                disabled={uploadingType !== null}
+              />
+              <Button
+                color="red"
+                onClick={handleClearFile}
+                disabled={uploadingType !== null || !file}
+                size="sm"
+                className="mt-2 sm:mt-0"
+              >
+                Clear
+              </Button>
+            </div>
+            
+            {file && (
+              <div className="flex items-center mt-2 p-2 bg-blue-50 rounded border border-blue-100">
+                <svg className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <Typography variant="small" className="font-medium">
+                  Selected file: {file.name} ({Math.round(file.size / 1024)} KB)
+                </Typography>
+              </div>
+            )}
           </div>
         </div>
 
@@ -354,6 +407,7 @@ export function ManageDealExternal() {
             Upload Actions
           </Typography>
           <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+            {/* Temporarily commented out
             <Button
               onClick={() => handleUpload("bulk-upload")}
               disabled={isUploading("bulk-upload") || isUploading("bulk-update") || isUploading("bulk-upload-price") || isUploading("bulk-upload-update") || isUploading("upload-price-only")}
@@ -401,6 +455,7 @@ export function ManageDealExternal() {
                 "Upload + Update Prices"
               )}
             </Button>
+            */}
 
             <Button
               onClick={() => handleUpload("upload-price-only")}
@@ -419,7 +474,7 @@ export function ManageDealExternal() {
         {/* Upload Results Dialog */}
         <Dialog 
           open={openResultDialog} 
-          handler={() => setOpenResultDialog(false)} 
+          handler={handleCloseResultDialog} 
           size="lg"
         >
           <DialogHeader>Upload Results</DialogHeader>
@@ -443,6 +498,7 @@ export function ManageDealExternal() {
                     <Typography variant="h5" color="red">{uploadResults.errorCount || 0}</Typography>
                     <Typography variant="small">Errors</Typography>
                   </div>
+
                 </div>
 
                 {uploadResults.errors && uploadResults.errors.length > 0 && (
@@ -478,7 +534,7 @@ export function ManageDealExternal() {
             )}
           </DialogBody>
           <DialogFooter>
-            <Button onClick={() => setOpenResultDialog(false)} color="blue">
+            <Button onClick={handleCloseResultDialog} color="blue">
               Close
             </Button>
           </DialogFooter>
@@ -489,3 +545,4 @@ export function ManageDealExternal() {
 }
 
 export default ManageDealExternal;
+

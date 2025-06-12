@@ -98,41 +98,65 @@ const DealSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Add a pre-save hook to check for duplicate dates in prices array
+// Add a pre-save hook to handle duplicate dates in prices array by removing the duplicates
 DealSchema.pre('save', function(next) {
   // Check if prices array exists and has items
   if (!this.prices || this.prices.length === 0) {
     return next();
   }
   
-  // Create a map to track dates
-  const dateSeen = new Map();
+  // Create a map to track dates and keep only the first occurrence of each date
+  const uniquePrices = new Map();
   const duplicateDates = [];
   
-  // Check for duplicate dates
+  // First pass: identify all dates and keep track of duplicates
   for (let i = 0; i < this.prices.length; i++) {
     const price = this.prices[i];
-    if (!price.startdate) continue;
+    if (!price || !price.startdate) continue;
     
     // Convert to date string for comparison (YYYY-MM-DD)
     const dateStr = new Date(price.startdate).toISOString().split('T')[0];
     
-    if (dateSeen.has(dateStr)) {
+    if (uniquePrices.has(dateStr)) {
       // Found a duplicate date
       duplicateDates.push({
         dateStr,
         index: i,
-        previousIndex: dateSeen.get(dateStr)
+        previousIndex: uniquePrices.get(dateStr).index
       });
     } else {
-      // Mark this date as seen
-      dateSeen.set(dateStr, i);
+      // Mark this date as seen, keeping the price and its index
+      uniquePrices.set(dateStr, { price, index: i });
     }
   }
   
-  // If duplicates were found, reject the save
+  // If duplicates were found, remove them and keep only the first occurrence
   if (duplicateDates.length > 0) {
-    return next(new Error(`Duplicate dates found in prices: ${duplicateDates.map(d => d.dateStr).join(', ')}. Each price must have a unique start date.`));
+    console.log(`Removing ${duplicateDates.length} duplicate date entries.`);
+    
+    // Create a new array with only unique dates (keeping the first occurrence)
+    const deduplicatedPrices = [];
+    const seenDates = new Set();
+    
+    for (const price of this.prices) {
+      if (!price || !price.startdate) {
+        deduplicatedPrices.push(price); // Keep entries without dates
+        continue;
+      }
+      
+      const dateStr = new Date(price.startdate).toISOString().split('T')[0];
+      
+      if (!seenDates.has(dateStr)) {
+        deduplicatedPrices.push(price);
+        seenDates.add(dateStr);
+      }
+      // Skip duplicates - they won't be added to the deduplicatedPrices array
+    }
+    
+    // Replace the prices array with the deduplicated version
+    this.prices = deduplicatedPrices;
+    
+    console.log(`Removed duplicate prices. Remaining prices: ${this.prices.length}`);
   }
   
   next();

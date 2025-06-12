@@ -1056,6 +1056,10 @@ exports.readAndInsertExcel = async (req, res) => {
     let skippedDuplicates = 0;
     let processingResults = [];
     
+    // Create a map to track processed start dates per deal 
+    // This will help us skip duplicates more efficiently
+    const processedDates = new Map();
+    
     for (const row of jsonData) {
       const dealId = row["Deal ID"];
       const airportId = row["Airport ID"];
@@ -1064,10 +1068,25 @@ exports.readAndInsertExcel = async (req, res) => {
       const price = Number(row["Price"]);
       const startdate = Number(row["Start Date"]);
       const enddate = Number(row["End Date"]);
-      console.log(excelDateToJSDate(startdate));
-      console.log(excelDateToJSDate(enddate));
-      if (!dealId || !airportId || !hotelId || !country || !price) continue;
 
+      // Skip incomplete entries
+      if (!dealId || !airportId || !hotelId || !country || !price || !startdate) {
+        processingResults.push({
+          row: row,
+          status: "error",
+          message: "Missing required data in row"
+        });
+        continue;
+      }
+
+      // Convert Excel dates to JS dates
+      const jsStartDate = excelDateToJSDate(startdate);
+      const jsEndDate = excelDateToJSDate(enddate);
+      
+      // Format date to string for comparison (YYYY-MM-DD)
+      const startDateStr = jsStartDate.toISOString().split('T')[0];
+      
+      // Look up the deal to check existing dates in database
       const deal = await Deal.findById(dealId);
       if (!deal) {
         processingResults.push({
@@ -1077,30 +1096,48 @@ exports.readAndInsertExcel = async (req, res) => {
         });
         continue;
       }
-
-      // Convert Excel dates to JS dates
-      const jsStartDate = excelDateToJSDate(startdate);
-      const jsEndDate = excelDateToJSDate(enddate);
       
-      // Format dates to strings for comparison (YYYY-MM-DD)
-      const startDateStr = jsStartDate.toISOString().split('T')[0];
+      // First check our in-memory cache of processed dates for this import session
+      if (!processedDates.has(dealId)) {
+        processedDates.set(dealId, new Set());
+      }
       
-      // Check if a price with the same start date already exists for this deal
-      const existingPriceWithSameDate = deal.prices.find(p => 
-        p.startdate.toISOString().split('T')[0] === startDateStr
-      );
-
-      if (existingPriceWithSameDate) {
-        // Skip this entry as a duplicate date
+      const dealDates = processedDates.get(dealId);
+      
+      // Check if we've already processed this date in the current import batch
+      if (dealDates.has(startDateStr)) {
         skippedDuplicates++;
         processingResults.push({
           row: row,
           status: "skipped",
-          message: `Duplicate date: ${startDateStr} already exists in deal '${deal.title}'`
+          message: `Duplicate date: ${startDateStr} appeared multiple times in import file for deal '${deal.title}'. Skipping entire row.`
         });
+        console.log(`Skipped duplicate date ${startDateStr} from import file for deal ${deal.title}`);
+        continue;
+      }
+      
+      // Check if date already exists in database - STRICT CHECK BY DATE ONLY
+      const existingPriceWithSameDate = deal.prices.find(p => {
+        if (!p || !p.startdate) return false;
+        const existingDateStr = new Date(p.startdate).toISOString().split('T')[0];
+        return existingDateStr === startDateStr;
+      });
+
+      if (existingPriceWithSameDate) {
+        // Skip this entry as a duplicate date - regardless of other fields
+        skippedDuplicates++;
+        processingResults.push({
+          row: row,
+          status: "skipped",
+          message: `Duplicate date: ${startDateStr} already exists in deal '${deal.title}'. Skipping entire row.`
+        });
+        console.log(`Skipped duplicate date ${startDateStr} for deal ${deal.title}`);
         continue;
       }
 
+      // Mark this date as processed for this deal
+      dealDates.add(startDateStr);
+      
       // No duplicate found, append to prices array
       deal.prices.push({
         country,
@@ -1120,28 +1157,20 @@ exports.readAndInsertExcel = async (req, res) => {
           message: `Price added for date: ${startDateStr}`
         });
       } catch (error) {
-        // Handle schema validation errors
-        if (error.message && error.message.includes('Duplicate dates found')) {
-          skippedDuplicates++;
-          processingResults.push({
-            row: row,
-            status: "error",
-            message: `Failed to add price: ${error.message}`
-          });
-        } else {
-          // Handle other errors
-          processingResults.push({
-            row: row,
-            status: "error",
-            message: `Failed to add price: ${error.message}`
-          });
-        }
+        // Handle errors
+        skippedDuplicates++;
+        processingResults.push({
+          row: row,
+          status: "error",
+          message: `Failed to add price: ${error.message}`
+        });
+        console.error(`Error saving price for ${startDateStr}:`, error.message);
       }
     }
 
     return res.status(200).json({
       success: true,
-      message: "Prices inserted into matching deals",
+      message: `Prices inserted into matching deals (${skippedDuplicates} rows with duplicate dates skipped)`,
       updatedDeals: updatedDealsCount,
       skippedDuplicates: skippedDuplicates,
       results: processingResults
@@ -1306,12 +1335,6 @@ exports.uploadPriceOnly = async (req, res) => {
     // Get all airports for code-to-id mapping
     const airports = await Airport.find().lean();
     
-    // Log all airports for debugging
-    console.log("All available airports:");
-    airports.forEach(airport => {
-      console.log(`- Airport: ${airport.name}, Code: ${airport.code}, ID: ${airport._id}`);
-    });
-    
     // Create different maps for efficient lookup
     const airportCodeMap = {};     // lookup by code
     const airportNameMap = {};     // lookup by name
@@ -1358,51 +1381,38 @@ exports.uploadPriceOnly = async (req, res) => {
 
     console.log(`Found ${jsonData.length} non-empty rows in the uploaded file`);
 
-    // Log sample data from first few rows for debugging
-    if (jsonData.length > 0) {
-      console.log("Sample data from first row:");
-      console.log(JSON.stringify(jsonData[0]));
-    }
-
     if (!jsonData.length) {
       return res
         .status(400)
         .json({ success: false, message: "No valid data found in Excel file" });
     }
 
-    // Create a map of existing prices to check for duplicates
-    // Key format: "airportId_startDate_endDate"
-    const existingPricesMap = new Map();
+    // Create a set of existing start dates to check for duplicates by date only
+    const existingStartDates = new Set();
     
     if (deal.prices && deal.prices.length > 0) {
-      deal.prices.forEach((price, index) => {
-        if (price.airport && price.airport.length > 0 && price.startdate && price.enddate) {
-          const airportId = price.airport[0].toString();
+      deal.prices.forEach(price => {
+        if (price.startdate) {
           const startDate = new Date(price.startdate).toISOString().split('T')[0];
-          const endDate = new Date(price.enddate).toISOString().split('T')[0];
-          
-          const key = `${airportId}_${startDate}_${endDate}`;
-          existingPricesMap.set(key, index);
+          existingStartDates.add(startDate);
         }
       });
     }
     
-    console.log(`Found ${existingPricesMap.size} existing prices in the deal`);
+    console.log(`Found ${existingStartDates.size} existing start dates in the deal`);
 
     // Make a copy of deal prices to accumulate changes, instead of modifying directly
-    // This prevents issues with concurrent modifications that might cause duplicates
     const updatedPrices = [...(deal.prices || [])];
 
     // Prepare for tracking success and errors
     let addedCount = 0;
-    let updatedCount = 0;
     let skippedCount = 0;
     let errorCount = 0;
     const errors = [];
     const duplicates = [];
     
-    // Track processed combinations to avoid duplicates within the upload file
-    const processedCombinations = new Set();
+    // Track processed start dates to avoid duplicates within the upload file
+    const processedStartDates = new Set();
     
     // Process in batches to handle large datasets
     const batchSize = 50;
@@ -1421,8 +1431,6 @@ exports.uploadPriceOnly = async (req, res) => {
           const enddate = row["End Date"];
           const outbound = row["Outbound Flight Details"] || "";
           const returnFlight = row["Return Flight Details"] || "";
-          
-          console.log(`Processing row with Airport Code: ${airportCode}, Airport ID: ${airportId}`);
           
           // Skip completely empty rows
           if (!airportId && !airportCode && !price && !startdate && !enddate) {
@@ -1463,15 +1471,11 @@ exports.uploadPriceOnly = async (req, res) => {
           
           // First try to use the direct ID if provided
           if (airportId && mongoose.Types.ObjectId.isValid(airportId)) {
-            console.log(`Trying to resolve by ID: ${airportId}`);
             // Check if this ID exists in our airport database
             resolvedAirport = airportIdMap[airportId];
             
             if (resolvedAirport) {
               resolvedAirportId = airportId;
-              console.log(`Found airport by ID: ${resolvedAirport.name} (${resolvedAirport.code})`);
-            } else {
-              console.log(`Warning: Airport ID ${airportId} not found in database`);
             }
           }
           
@@ -1479,29 +1483,20 @@ exports.uploadPriceOnly = async (req, res) => {
           if (!resolvedAirportId && airportCode) {
             // Normalize the code by trimming and converting to uppercase
             const normalizedCode = airportCode.trim().toUpperCase();
-            console.log(`Trying to resolve by code: ${normalizedCode}`);
             
             resolvedAirport = airportCodeMap[normalizedCode];
             
             if (resolvedAirport) {
               resolvedAirportId = resolvedAirport._id.toString();
-              console.log(`Found airport by code: ${resolvedAirport.name} (${resolvedAirport.code})`);
             } else {
-              console.log(`Airport code ${normalizedCode} not found in map`);
-              
               // Try to lookup by name as fallback
-              console.log(`Trying as name...`);
               const normalizedName = airportCode.trim().toLowerCase();
               resolvedAirport = airportNameMap[normalizedName];
               
               if (resolvedAirport) {
                 resolvedAirportId = resolvedAirport._id.toString();
-                console.log(`Found airport by name: ${resolvedAirport.name} (${resolvedAirport.code})`);
               } else {
-                console.log(`Airport name ${normalizedName} not found in map`);
-                
                 // Try a direct database lookup with multiple variations
-                console.log(`Trying direct DB lookup...`);
                 try {
                   const airport = await Airport.findOne({
                     $or: [
@@ -1515,7 +1510,6 @@ exports.uploadPriceOnly = async (req, res) => {
                   if (airport) {
                     resolvedAirport = airport;
                     resolvedAirportId = airport._id.toString();
-                    console.log(`Found airport via direct DB lookup: ${airport.name} (${airport.code})`);
                   } else {
                     // Last resort: check if the code looks like an IATA code (3 letters)
                     if (/^[A-Z]{3}$/i.test(airportCode.trim())) {
@@ -1527,7 +1521,6 @@ exports.uploadPriceOnly = async (req, res) => {
                       if (airportByPattern) {
                         resolvedAirport = airportByPattern;
                         resolvedAirportId = airportByPattern._id.toString();
-                        console.log(`Found airport by IATA pattern: ${airportByPattern.name} (${airportByPattern.code})`);
                       }
                     }
                   }
@@ -1549,8 +1542,6 @@ exports.uploadPriceOnly = async (req, res) => {
             errorCount++;
             continue;
           }
-          
-          console.log(`Successfully resolved airport: ID=${resolvedAirportId}, Name=${resolvedAirport?.name}, Code=${resolvedAirport?.code}`);
 
           // Convert dates properly
           const startDate = excelDateToJSDate(startdate);
@@ -1569,21 +1560,30 @@ exports.uploadPriceOnly = async (req, res) => {
           const formattedStartDate = startDate.toISOString().split('T')[0];
           const formattedEndDate = endDate.toISOString().split('T')[0];
           
-          // Check for duplicates within the current upload (different rows with same airport/dates)
-          const currentKey = `${resolvedAirportId}_${formattedStartDate}_${formattedEndDate}`;
-          
-          if (processedCombinations.has(currentKey)) {
+          // STRICT DATE CHECKING:
+          // Check for duplicates within the current upload by start date only
+          if (processedStartDates.has(formattedStartDate)) {
             duplicates.push({
               row: JSON.stringify(row),
-              info: `Duplicate entry in upload file: Airport ${airportCode}, Start: ${formattedStartDate}, End: ${formattedEndDate}`
+              info: `Duplicate start date: ${formattedStartDate} appeared multiple times in import file. Skipping entire row.`
             });
             skippedCount++;
             continue;
           }
           
-          // Mark this combination as processed
-          processedCombinations.add(currentKey);
-
+          // Check if this date already exists in the database
+          if (existingStartDates.has(formattedStartDate)) {
+            duplicates.push({
+              row: JSON.stringify(row),
+              info: `Duplicate start date: ${formattedStartDate} already exists in the deal. Skipping entire row.`
+            });
+            skippedCount++;
+            continue;
+          }
+          
+          // Mark this start date as processed
+          processedStartDates.add(formattedStartDate);
+          
           // Create the price object with all required fields
           const priceObj = {
             country: "UK", // Default to UK per requirements
@@ -1620,29 +1620,11 @@ exports.uploadPriceOnly = async (req, res) => {
             continue;
           }
 
-          // Check if a price with this exact combination already exists using our map
-          const existingPriceIndex = existingPricesMap.get(currentKey);
-          
-          if (existingPriceIndex !== undefined) {
-            // Update existing price in our copy of prices array
-            updatedPrices[existingPriceIndex].price = priceObj.price;
-            updatedPrices[existingPriceIndex].flightDetails = priceObj.flightDetails;
-            
-            // Ensure country is set
-            if (!updatedPrices[existingPriceIndex].country) {
-              updatedPrices[existingPriceIndex].country = "UK";
-            }
-            
-            updatedCount++;
-            console.log(`Updated existing price at index ${existingPriceIndex}: ${currentKey}`);
-          } else {
-            // Add new price to our copy of prices array
-            updatedPrices.push(priceObj);
-            // Update our map with the new price
-            existingPricesMap.set(currentKey, updatedPrices.length - 1);
-            addedCount++;
-            console.log(`Added new price: ${currentKey}`);
-          }
+          // Add new price to our copy of prices array
+          updatedPrices.push(priceObj);
+          // Update our tracking set with the new date
+          existingStartDates.add(formattedStartDate);
+          addedCount++;
         } catch (err) {
           console.error("Error processing row:", err);
           errors.push({
@@ -1653,8 +1635,7 @@ exports.uploadPriceOnly = async (req, res) => {
         }
       }
       
-      // Don't save after each batch anymore - we'll save only once at the end
-      // to prevent creating multiple copies of the deal
+      // Don't save after each batch
       if (i + batchSize < totalRows) {
         console.log(`Processed batch. Progress: ${i + batchSize}/${totalRows} rows processed`);
       }
@@ -1683,7 +1664,7 @@ exports.uploadPriceOnly = async (req, res) => {
         throw new Error(`Failed to update deal ${originalDealId}`);
       }
       
-      console.log(`Final save complete. Total processed: Added=${addedCount}, Updated=${updatedCount}, Skipped=${skippedCount}, Errors=${errorCount}`);
+      console.log(`Final save complete. Total processed: Added=${addedCount}, Skipped=${skippedCount}, Errors=${errorCount}`);
     } catch (saveError) {
       console.error("Price upload error:", saveError);
       return res.status(500).json({
@@ -1701,9 +1682,8 @@ exports.uploadPriceOnly = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: `Price upload completed: ${addedCount} added, ${updatedCount} updated, ${skippedCount} skipped (duplicates), ${errorCount} errors`,
+      message: `Price upload completed: ${addedCount} added, ${skippedCount} skipped (duplicate dates), ${errorCount} errors`,
       addedCount,
-      updatedCount,
       skippedCount,
       errorCount,
       issues: allIssues.length > 0 && allIssues.length <= 20 ? allIssues : 

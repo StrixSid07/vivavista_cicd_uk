@@ -124,9 +124,12 @@ const createDealPrice = async (req, res) => {
       return res.status(404).json({ message: "Deal not found" });
     }
 
-    const existingPriceWithSameDate = deal.prices.find(p => 
-      p.startdate.toISOString().split('T')[0] === startDateStr
-    );
+    // Strictly enforce unique start dates by checking normalized date string format
+    const existingPriceWithSameDate = deal.prices.find(p => {
+      // Normalize both dates to YYYY-MM-DD strings for reliable comparison
+      const existingDateStr = new Date(p.startdate).toISOString().split('T')[0];
+      return existingDateStr === startDateStr;
+    });
 
     if (existingPriceWithSameDate) {
       return res.status(400).json({ 
@@ -236,6 +239,33 @@ const updateDealPrice = async (req, res) => {
       }
     }
 
+    // Check for duplicate dates (excluding the price being updated)
+    const jsStartDate = new Date(startdate);
+    const startDateStr = jsStartDate.toISOString().split('T')[0];
+    
+    // First get the deal to check for duplicates
+    const existingDeal = await Deal.findById(dealId);
+    if (!existingDeal) {
+      return res.status(404).json({ message: "Deal not found" });
+    }
+    
+    // Check if another price (not the one being updated) has the same start date
+    const duplicateDate = existingDeal.prices.find(p => 
+      p._id.toString() !== priceId && 
+      new Date(p.startdate).toISOString().split('T')[0] === startDateStr
+    );
+    
+    if (duplicateDate) {
+      return res.status(400).json({ 
+        message: `Another price already uses the date ${startDateStr}. Each price must have a unique start date.`,
+        existingPrice: {
+          id: duplicateDate._id,
+          startdate: duplicateDate.startdate,
+          price: duplicateDate.price
+        }
+      });
+    }
+    
     // Update price
     const deal = await Deal.findOneAndUpdate(
       { _id: dealId, "prices._id": priceId },
