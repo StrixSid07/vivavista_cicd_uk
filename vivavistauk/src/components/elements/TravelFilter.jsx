@@ -114,7 +114,7 @@ const TravelFilter = () => {
   }, []);
 
   const [filters, setFilters] = useState({
-    price: 500,
+    price: 10000,
     boardBasis: [],
     hotelType: [],
     rating: "",
