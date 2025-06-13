@@ -439,10 +439,16 @@ const TravelFilter = () => {
                         {item.title}
                       </Typography>
                       <Typography className="text-black customfontstitle">
-                        {item.destination?.name || "Unknown Destination"} -{" "}
-                        {item.prices[0]?.flightDetails?.outbound?.airline ||
-                          "N/A"}{" "}
-                        Airline
+                        {item.destination?.name || "Unknown Destination"}
+                        {item.prices[0]?.flightDetails?.outbound?.airline && (
+                          <>
+                            {" "}
+                            - {
+                              item.prices[0].flightDetails.outbound.airline
+                            }{" "}
+                            Airline
+                          </>
+                        )}
                       </Typography>
                     </CardBody>
 
