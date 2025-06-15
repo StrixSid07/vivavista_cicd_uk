@@ -269,7 +269,12 @@ const getAllDeals = async (req, res) => {
       if (country) query.availableCountries = country;
 
       // Destination filter
-      if (useDestination && destination) query.destination = destination;
+      if (useDestination && destination) {
+        query.$or = [
+          { destination: destination },
+          { destinations: destination },
+        ];
+      }
       
       // Holiday category filter
       if (category) query.holidaycategories = category;
